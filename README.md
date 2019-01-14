@@ -18,8 +18,10 @@ pip install PyTimeMux8x8Acquisition
 * matplotlib
 * quantities
 * scipy
-* neo>=0.5.2
+* neo=0.6.1
 * nixio
+* deepdish
+* PhyREC
 
 ## Launchers
 
