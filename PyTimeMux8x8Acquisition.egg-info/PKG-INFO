@@ -1,0 +1,28 @@
+Metadata-Version: 1.1
+Name: PyTimeMux8x8Acquisition
+Version: 0.0.1
+Summary: 8x8 matrix device acquisition tools
+Home-page: https://github.com/jmartinezaguilar/PyTimeMux8x8Acquisition
+Author: Javier Martinez-Aguilar
+Author-email: Javier.Martinez@imb-cnm.csic.es
+License: GPLv3
+Download-URL: https://github.com/jmartinezaguilar/PyTimeMux8x8Acquisition
+Description: 
+                           Tools for acquire continuously 8x8 matrix devices                 
+                           
+Platform: UNKNOWN
+Classifier: Development Status :: 3 - Alpha
+Classifier: Environment :: Console
+Classifier: Environment :: X11 Applications :: Qt
+Classifier: Environment :: Win32 (MS Windows)
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: GNU General Public License (GPL)
+Classifier: Operating System :: Microsoft :: Windows
+Classifier: Operating System :: POSIX
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Operating System :: Unix
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 2.7
+Classifier: Topic :: Scientific/Engineering
+Classifier: Topic :: Software Development :: User Interfaces

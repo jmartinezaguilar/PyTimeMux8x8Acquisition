@@ -1,0 +1,9 @@
+setup.py
+PyTimeMux8x8Acquisition/TimeMuxGui.py
+PyTimeMux8x8Acquisition/__init__.py
+PyTimeMux8x8Acquisition.egg-info/PKG-INFO
+PyTimeMux8x8Acquisition.egg-info/SOURCES.txt
+PyTimeMux8x8Acquisition.egg-info/dependency_links.txt
+PyTimeMux8x8Acquisition.egg-info/entry_points.txt
+PyTimeMux8x8Acquisition.egg-info/requires.txt
+PyTimeMux8x8Acquisition.egg-info/top_level.txt

@@ -1,0 +1,7 @@
+numpy
+matplotlib
+quantities>=0.12
+scipy
+neo>=0.5.2
+nixio
+deepdish
