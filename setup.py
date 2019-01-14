@@ -36,7 +36,7 @@ install_requires = ['numpy',
                     'matplotlib',
                     'quantities>=0.12',
                     'scipy',
-                    'neo=0.6.1',
+                    'neo==0.6.1',
                     'nixio',
                     'deepdish',
                     'PhyREC'
