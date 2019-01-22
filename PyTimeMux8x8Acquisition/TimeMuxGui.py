@@ -96,8 +96,6 @@ class ReadAnalog(Daq.Task):
         self.StartTask()
 
     def ReadContData(self, Fs=1000, EverySamps=1000):
-        'ReadContData'
-
         self.Fs = Fs
         self.EverySamps = np.int32(EverySamps)
         self.ContSamps = True  # TODO check it
@@ -105,11 +103,13 @@ class ReadAnalog(Daq.Task):
         samperr = self.CfgSampClkTiming("", Fs, Daq.DAQmx_Val_Rising,
                                         Daq.DAQmx_Val_ContSamps, self.EverySamps*100)
 
+        self.CfgInputBuffer(self.EverySamps*10)
         self.AutoRegisterEveryNSamplesEvent(Daq.DAQmx_Val_Acquired_Into_Buffer,
                                             self.EverySamps, 0)
 
-        print samperr
+        print (samperr, EverySamps, Fs)
         self.StartTask()
+        print ('Errordebug', 'start' )
 
     def StopContData(self):
         self.StopTask()
@@ -276,8 +276,6 @@ class ChannelsConfig():
     ACDataEveryNEvent = None
     GateDataDoneEvent = None
     GateDataEveryNEvent = None
-
-    debugFile = None
 
     def DelInputs(self):
         self.Inputs.ClearTask()
@@ -462,6 +460,7 @@ class DataProcess(ChannelsConfig):
     IVGainDC = None
     IVGainGate = None
     DO = None
+    debugFile = True
 
     def InitRecording(self, Vds, Vgs, Fs, RecDC=False, RecAC=False):
         self.Seg = NeoRecord.NeoSegment()
@@ -519,15 +518,15 @@ class DataProcess(ChannelsConfig):
                 self.EventDataACReady()
 
     def CalcDCData(self, Data):
-#        if self.debugFile:
-#            DebugData = []
-#            for si, sn in sorted(enumerate(self.ChannelNames)):
-#                DebugData.append(Data[:, si])
-#        
-#        if len(DebugData) >= 100000:
-#            pickle.dump(DebugData, open('DebugFiledC.pkl', 'wb'))
-#            self.debugFile = False
+        if self.debugFile:
+            for si, sn in sorted(enumerate(self.ChannelNames)):
+                self.DebugData.append(Data[:, si])
+                print len(self.DebugData)
         
+            if len(self.DebugData) >= 10000:
+                print 'len 100'
+                pickle.dump(self.DebugData, open('DebugFileDC.pkl', 'wb'))
+                self.debugFile = False
         # Process Buffer
         Sample = Data.mean(axis=1)[None, :]
         self.BufferDC.RefreshBuffer[self.BufferDC.BufferInd, :] = Sample
@@ -559,6 +558,7 @@ class DataProcess(ChannelsConfig):
     def StartAcquisition(self, Vds, Vgs, Fs, nSampsCo, RecDC, RecAC,
                          ReBufferSize):
         self.ClearEventsCallBacks()
+        self.DebugData = []
 
         # Init Buffers
         if RecDC:
@@ -659,27 +659,20 @@ class TimeMuxAPP(QtWidgets.QMainWindow):
         print 'But UnselAll'
         for ck in self.GrChannels.findChildren(QtWidgets.QCheckBox):
             ck.setChecked(False)
+        for cj in self.GrColumns.findChildren(QtWidgets.QCheckBox):
+            cj.setChecked(False)
+
 
     def ButInitChannelsClick(self):
         print 'But InitChannels'
         # Event InitChannels button
         Channels = self.GetSelectedChannels(self.GrChannels)
-#        GateChannels = self.GetSelectedChannels(self.GrChannelGate)
-#        self.GateCh = GateChannels
         DigColumns = self.GetSelectedDigitals(self.GrColumns)
-#        if len(GateChannels) > 0:
-#            if len(GateChannels) > 1:
-#                QMessageBox.question(self, 'Message',
-#                                     "Warning: Select Only ONE Gate!",
-#                                     QMessageBox.Ok)
-#                return
-#            GateChannel = GateChannels[0]
-#        else:
         GateChannel = None
 
-        if GateChannel in Channels:
-            QMessageBox.question(self, 'Message', "Warning: Gate Duplicated!",
-                                 QMessageBox.Ok)
+        if len(Channels) is 0:
+            return
+        if len(DigColumns) is 0:
             return
 
         Config = self.GetConfig(self.GrConfig)
