@@ -1,3 +1,4 @@
+README.md
 setup.py
 PyTimeMux8x8Acquisition/TimeMuxGui.py
 PyTimeMux8x8Acquisition/__init__.py

@@ -1,10 +1,12 @@
-Metadata-Version: 1.1
+Metadata-Version: 1.2
 Name: PyTimeMux8x8Acquisition
 Version: 0.0.1
 Summary: 8x8 matrix device acquisition tools
 Home-page: https://github.com/jmartinezaguilar/PyTimeMux8x8Acquisition
-Author: Javier Martinez-Aguilar
+Author: Javier Martínez-Aguilar
 Author-email: Javier.Martinez@imb-cnm.csic.es
+Maintainer: Javier Martinez-Aguilar
+Maintainer-email: Javier.Martinez@imb-cnm.csic.es
 License: GPLv3
 Download-URL: https://github.com/jmartinezaguilar/PyTimeMux8x8Acquisition
 Description: 
