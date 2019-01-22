@@ -101,7 +101,7 @@ class ReadAnalog(Daq.Task):
         self.ContSamps = True  # TODO check it
 
         samperr = self.CfgSampClkTiming("", Fs, Daq.DAQmx_Val_Rising,
-                                        Daq.DAQmx_Val_ContSamps, self.EverySamps*100)
+                                        Daq.DAQmx_Val_ContSamps, self.EverySamps)
 
         self.CfgInputBuffer(self.EverySamps*10)
         self.AutoRegisterEveryNSamplesEvent(Daq.DAQmx_Val_Acquired_Into_Buffer,
@@ -327,6 +327,12 @@ class ChannelsConfig():
                 print ch, ' DC -> ', self.aiChannels[ch][0], self.DCChannelIndex[ch]
                 print ch, ' AC -> ', self.aiChannels[ch][1], self.ACChannelIndex[ch]
 
+#        self.ChOrder = {}
+#        for irow, row in enumerate(self.aiChannels):
+#            for icol, col in enumerate(self.doColumns):
+#                self.ChOrder[row+col] = (irow, icol)
+#        print self.ChOrder
+
         self.Inputs = ReadAnalog(InChans=InChans)
         # events linking
         self.Inputs.EveryNEvent = self.EveryNEventCallBack
@@ -461,13 +467,19 @@ class DataProcess(ChannelsConfig):
     IVGainGate = None
     DO = None
     debugFile = True
+    ChOrder = None
 
     def InitRecording(self, Vds, Vgs, Fs, RecDC=False, RecAC=False):
+
+        self.ChOrder = {}
+        for irow, row in enumerate(self.ChNamesList):
+            for icol, col in enumerate(sorted(self.DigColumns)):
+                self.ChOrder[row+col] = (irow, icol)
+
         self.Seg = NeoRecord.NeoSegment()
         if RecDC:
             self.DCDataEveryNEvent = self.CalcDCData
-            for ChName in self.ChannelNames:
-                print ChName
+            for ChName in sorted(self.ChannelNames):
                 name = ChName + '_DC'
                 sig = NeoRecord.NeoSignal(np.array([]),
                                           units=pq.A,
@@ -586,12 +598,23 @@ class DataProcess(ChannelsConfig):
         if not self.ColumnsControl:
             self.InitDigitalChannels(DigColumns=self.DigColumns)
         self.DO = self.GenerateDigitalSignal(nSampsCo=nSampsCo)
+        print 'nLines', len(self.DigColumns * 2)
+
         self.ColumnsControl.SetSignal(Signal=self.DO,
                                       nSamps=nSampsCo,
-                                      nLines=len(self.DigColumns * 2))
+                                      nLines=len(self.DigColumns) * 2)
+
+#    def RecalculateFs(self):
+#        while self.Fs % (len(self.DigColumns)*self.nSampsCo) != 0:
+#            self.Fs = self.Fs - 1
 
     def LauchAq(self):
         EveryN = len(self.DigColumns)*self.nSampsCo
+        print self.DO.shape
+        print self.DO
+
+#        while self.Fs % EveryN != 0:
+#            EveryN = EveryN + 1
 
         self.ReadChannelsData(Fs=self.Fs,
                               EverySamps=EveryN)
@@ -770,17 +793,31 @@ class TimeMuxAPP(QtWidgets.QMainWindow):
             Axs = None
         figdc, axdc = plt.subplots(len(self.TimeMux.DigColumns),
                                    len(self.TimeMux.ChNamesList), sharex=True)
-        axdc = axdc.flatten()
+#        axdc = axdc.flatten()
         Slots = []
-        iSlot = 0
+#        iSlot = 0
 
-        for isl, sn in sorted(enumerate(self.TimeMux.Seg.signames)):
-            if sn.endswith('DC'):
-                sig = self.TimeMux.Seg.GetSignal(sn)
-                Slots.append(Rplt.WaveSlot(sig,
-                                           Ax=axdc[iSlot],
-                                           Fig=figdc))
-                iSlot += 1
+        for sig in self.TimeMux.Seg.Signals():
+            if not sig.name.endswith('DC'):
+                continue
+            chname = sig.name.split('_')[0]
+            print chname
+            print self.TimeMux.ChOrder[chname]
+#            sig.ProcessChain = SigCond
+            Slots.append(Rplt.WaveSlot(sig,
+#                                       Units='A',
+                                       Ax=axdc[self.TimeMux.ChOrder[chname]],
+                                       Fig=figdc,
+#                                       clip_on=True
+                                        ))
+            print 'x'
+#        for isl, sn in sorted(enumerate(self.TimeMux.Seg.signames)):
+#            if sn.endswith('DC'):
+#                sig = self.TimeMux.Seg.GetSignal(sn)
+#                Slots.append(Rplt.WaveSlot(sig,
+#                                           Ax=axdc[iSlot],
+#                                           Fig=figdc))
+#                iSlot += 1
 
         self.PltSlDC = Rplt.PlotSlots(Slots,
                                       Fig=figdc,
