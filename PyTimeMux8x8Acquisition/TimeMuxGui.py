@@ -31,6 +31,7 @@ import matplotlib.pyplot as plt
 import deepdish as dd
 import matplotlib.cm as cmx
 import matplotlib.colors as mpcolors
+import pickle
 
 
 ###############################################################################
@@ -276,6 +277,8 @@ class ChannelsConfig():
     GateDataDoneEvent = None
     GateDataEveryNEvent = None
 
+    debugFile = None
+
     def DelInputs(self):
         self.Inputs.ClearTask()
 
@@ -486,6 +489,15 @@ class DataProcess(ChannelsConfig):
                 self.Seg.AddSignal(sig)
 
     def CalcACData(self, Data):
+#        if self.debugFile:
+#            DebugData = []
+#            for si, sn in sorted(enumerate(self.ChannelNames)):
+#                DebugData.append(Data[:, si])
+#        
+#        if len(DebugData) >= 100000:
+#            pickle.dump(DebugData, open('DebugFileAC.pkl', 'wb'))
+#            self.debugFile = False
+        
         # Process Buffer
         Sample = Data.mean(axis=1)[None, :]
         self.BufferAC.RefreshBuffer[self.BufferAC.BufferInd, :] = Sample
@@ -507,6 +519,15 @@ class DataProcess(ChannelsConfig):
                 self.EventDataACReady()
 
     def CalcDCData(self, Data):
+#        if self.debugFile:
+#            DebugData = []
+#            for si, sn in sorted(enumerate(self.ChannelNames)):
+#                DebugData.append(Data[:, si])
+#        
+#        if len(DebugData) >= 100000:
+#            pickle.dump(DebugData, open('DebugFiledC.pkl', 'wb'))
+#            self.debugFile = False
+        
         # Process Buffer
         Sample = Data.mean(axis=1)[None, :]
         self.BufferDC.RefreshBuffer[self.BufferDC.BufferInd, :] = Sample
