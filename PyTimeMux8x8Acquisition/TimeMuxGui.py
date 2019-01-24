@@ -532,13 +532,14 @@ class DataProcess(ChannelsConfig):
     def CalcDCData(self, Data):
         if self.debugFile:
             for si, sn in sorted(enumerate(self.ChannelNames)):
-                self.DebugData.append(Data[:, si])
+                self.DebugData[sn].append(Data[:, si])
                 print len(self.DebugData)
         
             if len(self.DebugData) >= 10000:
                 print 'len 100'
                 pickle.dump(self.DebugData, open('DebugFileDC.pkl', 'wb'))
                 self.debugFile = False
+
         # Process Buffer
         Sample = Data.mean(axis=1)[None, :]
         self.BufferDC.RefreshBuffer[self.BufferDC.BufferInd, :] = Sample
