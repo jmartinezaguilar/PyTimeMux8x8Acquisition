@@ -466,7 +466,10 @@ class DataProcess(ChannelsConfig):
     IVGainDC = None
     IVGainGate = None
     DO = None
-    debugFile = True
+
+    debugFileDc = True
+    debugFileAc = True
+
     ChOrder = None
 
     def InitRecording(self, Vds, Vgs, Fs, RecDC=False, RecAC=False):
@@ -500,15 +503,15 @@ class DataProcess(ChannelsConfig):
                 self.Seg.AddSignal(sig)
 
     def CalcACData(self, Data):
-#        if self.debugFile:
-#            DebugData = []
-#            for si, sn in sorted(enumerate(self.ChannelNames)):
-#                DebugData.append(Data[:, si])
-#        
-#        if len(DebugData) >= 100000:
-#            pickle.dump(DebugData, open('DebugFileAC.pkl', 'wb'))
-#            self.debugFile = False
-        
+        if self.debugFileAc:
+            debugDataAC = []
+            for si, sn in sorted(enumerate(self.ChannelNames)):
+                self.debugDataAC[sn].append(Data[:, si])
+
+        if len(debugDataAC) >= 100000:
+            pickle.dump(debugDataAC, open('debugDataAC.pkl', 'wb'))
+            self.debugFileAc = False
+
         # Process Buffer
         Sample = Data.mean(axis=1)[None, :]
         self.BufferAC.RefreshBuffer[self.BufferAC.BufferInd, :] = Sample
@@ -530,15 +533,15 @@ class DataProcess(ChannelsConfig):
                 self.EventDataACReady()
 
     def CalcDCData(self, Data):
-        if self.debugFile:
+        if self.debugFileDc:
             for si, sn in sorted(enumerate(self.ChannelNames)):
-                self.DebugData[sn].append(Data[:, si])
-                print len(self.DebugData)
-        
-            if len(self.DebugData) >= 10000:
+                self.debugDataDC[sn].append(Data[:, si])
+                print len(self.debugDataDC)
+
+            if len(self.debugDataDC) >= 10000:
                 print 'len 100'
-                pickle.dump(self.DebugData, open('DebugFileDC.pkl', 'wb'))
-                self.debugFile = False
+                pickle.dump(self.debugDataDC, open('DebugFileDC.pkl', 'wb'))
+                self.debugFileDc = False
 
         # Process Buffer
         Sample = Data.mean(axis=1)[None, :]
@@ -570,19 +573,20 @@ class DataProcess(ChannelsConfig):
 
     def StartAcquisition(self, Vds, Vgs, Fs, nSampsCo, RecDC, RecAC,
                          ReBufferSize):
-        self.ClearEventsCallBacks()
-        self.DebugData = []
 
+        self.ClearEventsCallBacks()
+        
         # Init Buffers
         if RecDC:
             self.BufferDC = Buffer(ReBufferSize=ReBufferSize,
                                    DigColumns=self.DigColumns,
                                    ChNamesList=self.ChNamesList)
-
+            self.debugDataDC = self.InitDebugFile()
         if RecAC:
             self.BufferAC = Buffer(ReBufferSize=ReBufferSize,
                                    DigColumns=self.DigColumns,
                                    ChNamesList=self.ChNamesList)
+            self.debugDataAC = self.InitDebugFile()
 
         SwitchFreq = Fs/(len(self.DigColumns)*nSampsCo)
         print 'Switching Freq -->', SwitchFreq
@@ -608,6 +612,13 @@ class DataProcess(ChannelsConfig):
 #    def RecalculateFs(self):
 #        while self.Fs % (len(self.DigColumns)*self.nSampsCo) != 0:
 #            self.Fs = self.Fs - 1
+
+    def InitDebugFile(self):
+        DebugData = {}
+        for si, sn in sorted(enumerate(self.ChannelNames)):
+            DebugData[sn] = []
+        
+        return DebugData
 
     def LauchAq(self):
         EveryN = len(self.DigColumns)*self.nSampsCo
