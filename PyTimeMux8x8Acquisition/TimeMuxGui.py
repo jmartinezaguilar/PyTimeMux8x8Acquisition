@@ -468,7 +468,7 @@ class DataProcess(ChannelsConfig):
     DO = None
 
     debugFileDc = False
-    debugFileAc = False
+    debugFileAc = True
 
     ChOrder = None
 
@@ -505,10 +505,11 @@ class DataProcess(ChannelsConfig):
     def CalcACData(self, Data):
         if self.debugFileAc:
             for si, sn in sorted(enumerate(self.ChannelNames)):
-                self.debugDataAC[sn].append(Data[:, si])
-            print len(self.debugDataAC['Ch05Col1'])
-            if len(self.debugDataAC['Ch05Col1']) >= 10000:
-                pickle.dump(self.debugDataAC, open('debugDataAC.pkl', 'wb'))
+                self.debugDataAC[sn].append(Data[si, :])
+                print len(self.debugDataAC[sn])
+            if len(self.debugDataAC[sn]) >= 1000:
+                print 'AC'
+                pickle.dump(self.debugDataAC, open('DebugFileAC.pkl', 'wb'))
                 self.debugFileAc = False
 
         # Process Buffer
@@ -532,11 +533,12 @@ class DataProcess(ChannelsConfig):
                 self.EventDataACReady()
 
     def CalcDCData(self, Data):
+        print self.debugFileDc
         if self.debugFileDc:
             for si, sn in sorted(enumerate(self.ChannelNames)):
-                self.debugDataDC[sn].append(Data[:, si])
-                print len(self.debugDataDC['Ch05Col6'])
-            if len(self.debugDataDC['Ch05Col6']) >= 10000:
+                self.debugDataDC[sn].append(Data[si, :])
+                print len(self.debugDataDC[sn])
+            if len(self.debugDataDC[sn]) >= 1000:
                 print 'DC'
                 pickle.dump(self.debugDataDC, open('DebugFileDC.pkl', 'wb'))
                 self.debugFileDc = False
@@ -811,8 +813,8 @@ class TimeMuxAPP(QtWidgets.QMainWindow):
             if not sig.name.endswith('DC'):
                 continue
             chname = sig.name.split('_')[0]
-            print chname
-            print self.TimeMux.ChOrder[chname]
+#            print chname
+#            print self.TimeMux.ChOrder[chname]
 #            sig.ProcessChain = SigCond
             Slots.append(Rplt.WaveSlot(sig,
 #                                       Units='A',
@@ -820,7 +822,7 @@ class TimeMuxAPP(QtWidgets.QMainWindow):
                                        Fig=figdc,
 #                                       clip_on=True
                                         ))
-            print 'x'
+#            print 'x'
 #        for isl, sn in sorted(enumerate(self.TimeMux.Seg.signames)):
 #            if sn.endswith('DC'):
 #                sig = self.TimeMux.Seg.GetSignal(sn)
