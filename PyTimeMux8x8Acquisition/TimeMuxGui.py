@@ -506,9 +506,8 @@ class DataProcess(ChannelsConfig):
         if self.debugFileAc:
             for si, sn in sorted(enumerate(self.ChannelNames)):
                 self.debugDataAC[sn].append(Data[si, :])
-                print len(self.debugDataAC[sn])
             if len(self.debugDataAC[sn]) >= 1000:
-                print 'AC'
+                print 'AC dbg file'
                 pickle.dump(self.debugDataAC, open('DebugFileAC.pkl', 'wb'))
                 self.debugFileAc = False
 
@@ -533,13 +532,11 @@ class DataProcess(ChannelsConfig):
                 self.EventDataACReady()
 
     def CalcDCData(self, Data):
-        print self.debugFileDc
         if self.debugFileDc:
             for si, sn in sorted(enumerate(self.ChannelNames)):
                 self.debugDataDC[sn].append(Data[si, :])
-                print len(self.debugDataDC[sn])
             if len(self.debugDataDC[sn]) >= 1000:
-                print 'DC'
+                print 'DC dbg file'
                 pickle.dump(self.debugDataDC, open('DebugFileDC.pkl', 'wb'))
                 self.debugFileDc = False
 
