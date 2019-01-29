@@ -467,8 +467,8 @@ class DataProcess(ChannelsConfig):
     IVGainGate = None
     DO = None
 
-    debugFileDc = True
-    debugFileAc = True
+    debugFileDc = False
+    debugFileAc = False
 
     ChOrder = None
 
@@ -504,13 +504,12 @@ class DataProcess(ChannelsConfig):
 
     def CalcACData(self, Data):
         if self.debugFileAc:
-            debugDataAC = []
             for si, sn in sorted(enumerate(self.ChannelNames)):
                 self.debugDataAC[sn].append(Data[:, si])
-
-        if len(debugDataAC) >= 100000:
-            pickle.dump(debugDataAC, open('debugDataAC.pkl', 'wb'))
-            self.debugFileAc = False
+            print len(self.debugDataAC['Ch05Col1'])
+            if len(self.debugDataAC['Ch05Col1']) >= 10000:
+                pickle.dump(self.debugDataAC, open('debugDataAC.pkl', 'wb'))
+                self.debugFileAc = False
 
         # Process Buffer
         Sample = Data.mean(axis=1)[None, :]
@@ -536,10 +535,9 @@ class DataProcess(ChannelsConfig):
         if self.debugFileDc:
             for si, sn in sorted(enumerate(self.ChannelNames)):
                 self.debugDataDC[sn].append(Data[:, si])
-                print len(self.debugDataDC)
-
-            if len(self.debugDataDC) >= 10000:
-                print 'len 100'
+                print len(self.debugDataDC['Ch05Col6'])
+            if len(self.debugDataDC['Ch05Col6']) >= 10000:
+                print 'DC'
                 pickle.dump(self.debugDataDC, open('DebugFileDC.pkl', 'wb'))
                 self.debugFileDc = False
 
