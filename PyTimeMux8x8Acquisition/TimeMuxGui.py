@@ -468,7 +468,7 @@ class DataProcess(ChannelsConfig):
     DO = None
 
     debugFileDc = False
-    debugFileAc = True
+    debugFileAc = False
 
     ChOrder = None
 
