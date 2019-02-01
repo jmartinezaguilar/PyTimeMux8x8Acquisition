@@ -802,31 +802,16 @@ class TimeMuxAPP(QtWidgets.QMainWindow):
             Axs = None
         figdc, axdc = plt.subplots(len(self.TimeMux.DigColumns),
                                    len(self.TimeMux.ChNamesList), sharex=True)
-#        axdc = axdc.flatten()
         Slots = []
-#        iSlot = 0
 
         for sig in self.TimeMux.Seg.Signals():
             if not sig.name.endswith('DC'):
                 continue
             chname = sig.name.split('_')[0]
-#            print chname
-#            print self.TimeMux.ChOrder[chname]
-#            sig.ProcessChain = SigCond
             Slots.append(Rplt.WaveSlot(sig,
-#                                       Units='A',
                                        Ax=axdc[self.TimeMux.ChOrder[chname]],
                                        Fig=figdc,
-#                                       clip_on=True
-                                        ))
-#            print 'x'
-#        for isl, sn in sorted(enumerate(self.TimeMux.Seg.signames)):
-#            if sn.endswith('DC'):
-#                sig = self.TimeMux.Seg.GetSignal(sn)
-#                Slots.append(Rplt.WaveSlot(sig,
-#                                           Ax=axdc[iSlot],
-#                                           Fig=figdc))
-#                iSlot += 1
+                                       ))
 
         self.PltSlDC = Rplt.PlotSlots(Slots,
                                       Fig=figdc,
@@ -838,20 +823,18 @@ class TimeMuxAPP(QtWidgets.QMainWindow):
             Axs = 'All'
         else:
             Axs = None
-
         figac, axac = plt.subplots(len(self.TimeMux.DigColumns),
                                    len(self.TimeMux.ChNamesList), sharex=True)
-        axac = axac.flatten()
         Slots = []
-        iSlot = 0
 
-        for isl, sn in sorted(enumerate(self.TimeMux.Seg.signames)):
-            if sn.endswith('AC'):
-                sig = self.TimeMux.Seg.GetSignal(sn)
-                Slots.append(Rplt.WaveSlot(sig,
-                                           Ax=axac[iSlot],
-                                           Fig=figac))
-                iSlot += 1
+        for sig in self.TimeMux.Seg.Signals():
+            if not sig.name.endswith('AC'):
+                continue
+            chname = sig.name.split('_')[0]
+            Slots.append(Rplt.WaveSlot(sig,
+                                       Ax=axac[self.TimeMux.ChOrder[chname]],
+                                       Fig=figac,
+                                       ))
 
         self.PltSlAC = Rplt.PlotSlots(Slots,
                                       Fig=figac,
