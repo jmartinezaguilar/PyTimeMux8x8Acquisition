@@ -506,9 +506,10 @@ class DataProcess(ChannelsConfig):
         if self.debugFileAc:
             for si, sn in sorted(enumerate(self.ChannelNames)):
                 self.debugDataAC[sn].append(Data[si, :])
+
             if len(self.debugDataAC[sn]) >= 1000:
-                print 'AC dbg file'
-                pickle.dump(self.debugDataAC, open('DebugFileAC.pkl', 'wb'))
+                print 'AC dbg File'
+                pickle.dump(self.debugDataAC, open('debugDataAC.pkl', 'wb'))
                 self.debugFileAc = False
 
         # Process Buffer
@@ -535,8 +536,9 @@ class DataProcess(ChannelsConfig):
         if self.debugFileDc:
             for si, sn in sorted(enumerate(self.ChannelNames)):
                 self.debugDataDC[sn].append(Data[si, :])
+
             if len(self.debugDataDC[sn]) >= 1000:
-                print 'DC dbg file'
+                print 'DC dbg File'
                 pickle.dump(self.debugDataDC, open('DebugFileDC.pkl', 'wb'))
                 self.debugFileDc = False
 
@@ -922,8 +924,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
 
 
 
