@@ -1,8 +1,0 @@
-numpy
-matplotlib
-quantities>=0.12
-scipy
-neo==0.6.1
-nixio
-deepdish
-PhyREC

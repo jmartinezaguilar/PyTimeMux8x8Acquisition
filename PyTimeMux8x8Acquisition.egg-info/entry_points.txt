@@ -1,3 +1,0 @@
-[console_scripts]
-GFETTimeMux8x8Acq = PyTimeMux8x8Acquisition.TimeMuxGui:main
-
