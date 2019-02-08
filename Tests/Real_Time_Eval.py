@@ -15,28 +15,28 @@ import quantities as pq
 
 def GenDigitalLines(nColumns):
     DOut = np.array([], dtype=np.bool)
-    
+
     for nCol in range(nColumns):
         Lout = np.zeros((1, nSampsCh*nColumns), dtype=np.bool)
         Lout[0, nSampsCh * nCol: nSampsCh*(nCol + 1)] = True
         Cout = np.vstack((Lout, ~Lout))
         DOut = np.vstack((DOut, Cout)) if DOut.size else Cout
-    
+
     SortDInds = []
     for line in DOut[0:-1:2, :]:
             SortDInds.append(np.where(line))
-    
+
     return DOut.astype(np.uint8), SortDInds
 
 
 def GenDummySamples(nColumns, nRows, nSampsCh):
     DummySamps = np.array([])
-    for V in np.arange(nColumns):    
+    for V in np.arange(nColumns):
         samp = np.ones((nSampsCh, nRows))*V
         for nr in range(nRows):
             samp[:, nr] = samp[:, nr]+nr*10
         DummySamps = np.vstack((DummySamps, samp)) if DummySamps.size else samp
-    
+
     return DummySamps.transpose()
 
 
@@ -47,7 +47,7 @@ def SortingData_np(DigLines, Samps):
         for line in DigLines[0:-1:2, :]:
             LineSamps = chData[np.where(line)]
             LinesSorted = np.vstack((LinesSorted, LineSamps)) if LinesSorted.size else LineSamps
-    
+
     return LinesSorted
 
 
@@ -57,8 +57,9 @@ def SortingData_list(DigLines, Samps):
     for chData in Samps[:, :]:
         for line in DigLines[0:-1:2, :]:
             LinesSorted.append(chData[np.where(line)])
-    
+
     return np.array(LinesSorted)
+
 
 def SortingData_list2(SortDInds, Samps):
     # Sorting
@@ -66,19 +67,21 @@ def SortingData_list2(SortDInds, Samps):
     for chData in Samps[:, :]:
         for Inds in SortDInds:
             LinesSorted.append(chData[Inds])
-    
+
     return np.array(LinesSorted)
+
 
 def SortingData_list3(SortDInds, Samps, nCols, nRows, nSampsCh):
     # Sorting
-    LinesSorted = np.ndarray((nCols*nRows,nSampsCh))
-    ind = 0    
+    LinesSorted = np.ndarray((nCols*nRows, nSampsCh))
+    ind = 0
     for chData in Samps[:, :]:
         for Inds in SortDInds:
             LinesSorted[ind, :] = chData[Inds]
             ind += 1
-    
+
     return LinesSorted
+
 
 aiChannels = {'Ch01': ('ai0', 'ai8'),
               'Ch02': ('ai1', 'ai9'),
@@ -109,6 +112,23 @@ doColumns = {'Col1': ('line0', 'line1'),
              'Col8': ('line14', 'line15'),
              }
 
+AxesProp = {
+            'ylim': (-1, 1),
+            'facecolor': '#FFFFFF00',
+            'autoscaley_on': True,
+            'xaxis': {'visible': False,
+                      },
+            'yaxis': {'visible': False,
+                      },
+            'ylabel': '',
+            'title': None,
+            }
+
+FigProp = {'tight_layout': True,
+           'size_inches': (10,5),
+#               'facecolor': '#FFFFFF00',
+           }
+
 if __name__ == '__main__':
     plt.close('all')
     
@@ -127,8 +147,8 @@ if __name__ == '__main__':
     ChannelNames = []
     Columns = sorted(doColumns.keys())
     for RowName in sorted(aiChannels.keys())[0:nRows]:
-            for ColName in sorted(doColumns.keys())[0:nColumns]:
-                ChannelNames.append(RowName+ColName)
+        for ColName in sorted(doColumns.keys())[0: nColumns]:
+            ChannelNames.append(RowName+ColName)
 
     # Init Recording to store the data
     RecOut = NeoSegment()
@@ -150,7 +170,9 @@ if __name__ == '__main__':
                                    ))
     PltSl = Rplt.PlotSlots(Slots,
                            Fig=fig,
-                           )
+                           AxKwargs=AxesProp,
+                           FigKwargs=FigProp,
+                           TimeAxis=None)
     PltSl.PlotChannels(None)
 
     # Generate digital lines, sorting indexes and dummy samples
@@ -162,10 +184,13 @@ if __name__ == '__main__':
     # Define process buffer
     RefreshBuffer = np.zeros((ReBufferSize, nColumns*nRows))
     BufferInd = 0
+
+    # Start timer
     Tstart = time.time()
+
     ##
-    f = open('TstRealTimeEval.dat', 'wb')
-    np.savetxt(f, [])
+#    f = open('TstRealTimeEval.dat', 'wb')
+#    np.savetxt(f, [])
     ##
     for i in range(nIters):
 #        DummyChSamps = SortingData_list(DigLines=DigLines,
@@ -180,27 +205,31 @@ if __name__ == '__main__':
                                          nSampsCh=nSampsCh)
         
         # Store data in plealocated buffer
-        Sample = DummyChSamps.mean(axis=1)[None, :]        
-        RefreshBuffer[BufferInd, :] = Sample        
+        Sample = DummyChSamps.mean(axis=1)[None, :]
+        RefreshBuffer[BufferInd, :] = Sample
         BufferInd += 1
+
         # Update recording and plot data
         if BufferInd == ReBufferSize:
             for si, sn in enumerate(ChannelNames):
                 RecOut.AppendSignal(sn,
-                                    RefreshBuffer[:,si][:,None])
+                                    RefreshBuffer[:, si][:, None])
                 sig = RecOut.GetSignal(sn)
             ##
-            np.savetxt(f, RefreshBuffer)
-            f.flush()
+#            np.savetxt(f, RefreshBuffer)
+#            f.flush()
             ##
-            BufferInd = 0       
+            BufferInd = 0
             RefreshBuffer = np.zeros((ReBufferSize, nColumns*nRows))
             for sl in PltSl.Slots:
                 sl.Signal = RecOut.GetSignal(sl.name)
             PltSl.PlotChannels(None)
-            
+
+    PltSl.AddLegend()
     Tend = time.time()
-    f.close()
+
+#    f.close()
+
     AcqTime = Ts*nSampsCh*nColumns
     ProcTime = (Tend-Tstart)/nIters
     FsMax = 1/(ProcTime/(nSampsCh*nColumns))
@@ -215,9 +244,3 @@ if __name__ == '__main__':
         print('BAD!!!!!!!!!!!')
     else:
         print('Good')
-    
-
-    
-        
-        
-        
