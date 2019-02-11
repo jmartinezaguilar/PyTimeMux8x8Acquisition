@@ -12,6 +12,9 @@ from PhyREC.NeoInterface import NeoSegment, NeoSignal
 import PhyREC.PlotWaves as Rplt
 import quantities as pq
 from itertools import  cycle
+import h5py
+import os
+
 
 AxesProp = {
             'ylim': (-1, 1),
@@ -31,6 +34,44 @@ FigProp = {'tight_layout': True,
            }
 
 
+class FileBuffer():
+    TMpBufferSize = 1024
+    def __init__(self, FileName, MaxSize, nChannels):
+        self.TmpBuffer = np.ndarray((self.TMpBufferSize, nChannels))
+        self.TmpInd = 0
+        self.file = h5py.File(FileName, 'w')
+        self.dset = self.file.create_dataset('data',
+                                             shape=(MaxSize, nChannels),
+                                             maxshape=(MaxSize, nChannels))
+        self.index = 0
+
+    def AddSample(self, Sample):
+        self.TmpBuffer[self.TmpInd, :] = Sample
+        self.TmpInd += 1
+        if self.TmpInd == self.TMpBufferSize:
+            inds = range(self.index, self.index+self.TMpBufferSize)
+            self.dset[inds, :] = Sample
+            self.index = self.TmpBuffer            
+            self.TmpInd = 0
+
+            
+class Buffer():    
+
+    def __init__(self, BufferSize, nChannels):
+        self.Buffer = np.ndarray((BufferSize, nChannels))
+        self.BufferSize = BufferSize
+        self.Ind = 0
+        self.Sigs = []      
+
+    def AddSample(self, Sample):
+        self.Buffer[self.Ind, :] = Sample
+        self.Ind += 1
+        if self.Ind == self.BufferSize:
+            self.Ind = 0
+            return True
+        return False
+
+
 if __name__ == '__main__':
     plt.close('all')
 
@@ -40,18 +81,76 @@ if __name__ == '__main__':
     Fs = float(2e3)
     Ts = 1/Fs
     Fsig = 100    
-    ReBufferSize = 3000
-    nIters = ReBufferSize * 20
-    nChannels = 8
+    ReBufferSize = 10000
+    nSamples = ReBufferSize*100
+    
+    nChannels = 64
     
     Pcycle = np.round(Fs/Fsig)
     Fsig = Fs/Pcycle
     
-    t = np.linspace(0, 1/Fsig, Pcycle)
+    tstop = Ts*(Pcycle)
+    t = np.arange(0, tstop, Ts)
+    
     
     samples = np.sin(2*np.pi*Fsig*t)
+    InSamples = cycle(samples)
+    chFacts = np.linspace(0, nChannels/10, nChannels)
     
-    plt.plot(t, samples)
+    os.remove('test.h5')
+#    Buffer = FileBuffer(FileName='test.h5',
+#                            MaxSize=nSamples,
+#                            nChannels=nChannels)
+#    
+    File = h5py.File('test.h5','w')
+    FileData = File.create_dataset('data', 
+                                   shape=(0, nChannels),
+                                   maxshape=(None, nChannels))
+    InBuffer = Buffer(BufferSize=ReBufferSize,
+                      nChannels=nChannels)
+    Sigs = []
+    for i in range(nChannels):
+        Sigs.append(NeoSignal(signal=InBuffer.Buffer[:,i],
+                               units='V',
+                               sampling_rate=Fs*pq.Hz,
+                               t_start=0*pq.s,
+                               copy=False,
+                               name='ch{}'.format(i))) 
+
+    Slots = []
+    for sig in Sigs:
+        Slots.append(Rplt.WaveSlot(sig))
+
+    Splt = Rplt.PlotSlots(Slots, CalcSignal=False)
+
+    Tstart = time.time()
+    for i in range(nSamples):
+        if InBuffer.AddSample(chFacts*next(InSamples)):
+            ind = FileData.shape[0]
+            FileData.resize((ind+ReBufferSize, nChannels))
+            FileData[ind:,:] = InBuffer.Buffer
+            for sig in Sigs:
+                sig.t_start = (ind * Ts)*pq.s
+            Splt.PlotChannels(None)
+            Splt.Fig.canvas.draw()
+            plt.show()
+            File.flush()
+    
+    File.close()
+
+#    plt.plot(FileData)  
+    
+    Tend = time.time()
+    
+    ProcTime = Tend-Tstart
+    print('Samples --> ', nSamples)
+    print('ProcTime --> ', ProcTime)
+    print('MaxSampling --> ', nSamples/ProcTime)
+    
+    file = h5py.File('test.h5', 'r')
+    data = file['data']
+    plt.plot(data)
+
     
 #    np.sin()
 
