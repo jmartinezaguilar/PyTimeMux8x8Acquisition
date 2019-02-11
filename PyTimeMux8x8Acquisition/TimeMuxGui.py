@@ -513,6 +513,7 @@ class DataProcess(ChannelsConfig):
                 self.debugFileAc = False
 
         # Process Buffer
+#        Data = Data[:, 1:]
         Sample = Data.mean(axis=1)[None, :]
         self.BufferAC.RefreshBuffer[self.BufferAC.BufferInd, :] = Sample
         self.BufferAC.BufferInd += 1
@@ -543,6 +544,7 @@ class DataProcess(ChannelsConfig):
                 self.debugFileDc = False
 
         # Process Buffer
+#        Data = Data[:, 1:]
         Sample = Data.mean(axis=1)[None, :]
         self.BufferDC.RefreshBuffer[self.BufferDC.BufferInd, :] = Sample
         self.BufferDC.BufferInd += 1
