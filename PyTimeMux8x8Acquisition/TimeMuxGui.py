@@ -469,6 +469,8 @@ class DataProcess(ChannelsConfig):
 
     debugFileDc = False
     debugFileAc = False
+    DebugCounterAc = 0
+    DebugCounterDc = 0
 
     ChOrder = None
 
@@ -504,16 +506,19 @@ class DataProcess(ChannelsConfig):
 
     def CalcACData(self, Data):
         if self.debugFileAc:
-            for si, sn in sorted(enumerate(self.ChannelNames)):
-                self.debugDataAC[sn].append(Data[si, :])
+            if self.DebugCounterAc >= 20:
+                for si, sn in sorted(enumerate(self.ChannelNames)):
+                    self.debugDataAC[sn].append(Data[si, :])
 
-            if len(self.debugDataAC[sn]) >= 1000:
-                print 'AC dbg File'
-                pickle.dump(self.debugDataAC, open('debugDataAC.pkl', 'wb'))
-                self.debugFileAc = False
+                if len(self.debugDataAC[sn]) >= 1000:
+                    print 'AC dbg File'
+                    pickle.dump(self.debugDataAC, open('DebugDataAC.pkl', 
+                                                       'wb'))
+                    self.debugFileAc = False
+                    self.DebugCounterAc = 0
 
         # Process Buffer
-#        Data = Data[:, 1:]
+        Data = Data[:, 1:]
         Sample = Data.mean(axis=1)[None, :]
         self.BufferAC.RefreshBuffer[self.BufferAC.BufferInd, :] = Sample
         self.BufferAC.BufferInd += 1
@@ -530,21 +535,26 @@ class DataProcess(ChannelsConfig):
                                                     len(self.DigColumns) *
                                                     len(self.ChNamesList)))
 
+            if self.debugFileAc:
+                self.DebugCounterAc += 1
             if self.EventDataACReady is not None:
                 self.EventDataACReady()
 
     def CalcDCData(self, Data):
         if self.debugFileDc:
-            for si, sn in sorted(enumerate(self.ChannelNames)):
-                self.debugDataDC[sn].append(Data[si, :])
+            if self.DebugCounterDc >= 20:
+                for si, sn in sorted(enumerate(self.ChannelNames)):
+                    self.debugDataDC[sn].append(Data[si, :])
 
-            if len(self.debugDataDC[sn]) >= 1000:
-                print 'DC dbg File'
-                pickle.dump(self.debugDataDC, open('DebugFileDC.pkl', 'wb'))
-                self.debugFileDc = False
+                if len(self.debugDataDC[sn]) >= 1000:
+                    print 'DC dbg File'
+                    pickle.dump(self.debugDataDC, open('DebugFileDC.pkl',
+                                                       'wb'))
+                    self.debugFileDc = False
+                    self.DebugCounterDc = 0
 
         # Process Buffer
-#        Data = Data[:, 1:]
+        Data = Data[:, 1:]
         Sample = Data.mean(axis=1)[None, :]
         self.BufferDC.RefreshBuffer[self.BufferDC.BufferInd, :] = Sample
         self.BufferDC.BufferInd += 1
@@ -560,6 +570,8 @@ class DataProcess(ChannelsConfig):
             self.BufferDC.RefreshBuffer = np.zeros((self.BufferDC.ReBufferSize,
                                                     len(self.DigColumns) *
                                                     len(self.ChNamesList)))
+            if self.debugFileDc:
+                self.DebugCounterDc += 1
 
             if self.EventDataDCReady is not None:
                 self.EventDataDCReady()
@@ -576,7 +588,7 @@ class DataProcess(ChannelsConfig):
                          ReBufferSize):
 
         self.ClearEventsCallBacks()
-        
+
         # Init Buffers
         if RecDC:
             self.BufferDC = Buffer(ReBufferSize=ReBufferSize,
