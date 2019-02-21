@@ -208,7 +208,10 @@ doColumns = {'Col1': ('line0', 'line1'),
              }
 
 
-##############################################################################
+################################Channels, DigColumns,
+                 AcqDC=True, AcqAC=True,
+                 ChVds='ao0', ChVs='ao1',
+                 ACGain=1e6, DCGain=10e3##############################################
 
 
 class ChannelsConfig():
@@ -468,6 +471,24 @@ class PlottingThread(Qt.QThread):
 
 ##############################################################################
 
+ChannelsConfigKW = {'Channels': ('Ch01',
+                                 'Ch02',
+                                 'Ch03',
+                                 'Ch04'),
+                    'DigColumns': ('Col1',
+                                   'Col2',
+                                   'Col3'),
+                    'AcqDC': True,
+                    'AcqAC': True,
+                    }
+
+SampKw = {'Fs':100e3,
+          'nSampsCo':10,
+          'Vgs': 0.1, 
+          'Vds': 0.05}
+
+#                 ChVds='ao0', ChVs='ao1',
+#                 ACGain=1e6, DCGain=10e3
 
 class MainWindow(Qt.QWidget):
     ''' Main Window '''
@@ -489,24 +510,11 @@ class MainWindow(Qt.QWidget):
 
     def on_btnAcq(self):
         ''' Starting or Stopping an Additional Stream-WorkThread from the main window '''
-
-        AcqKwargs = {'Inputs': {'RowChannels': ('Ch01', 'Ch02', 'Ch03', ),
-                                'ColChannels': ('Col1', 'Col2', ),
-                                'Config_DC': True,
-                                'Config_AC': False,
-                                },
-                     'Sampling': {'Fs': 300e3,
-                                  'nSamples': 100000,
-                                  'BufferSize': 10000,
-                                  },
-                     'Outputs': {'Vds': 0.05,
-                                 'Vgs': 0.1,
-                                 'TestSignal': None,
-                                 }
-                     }
-
         if self.threadAcq is None:
-            self.threadAcq = DataAcquisitionThread()
+            self.threadAcq = DataAcquisitionThread(ChannelsConfigKW=ChannelsConfigKW,
+                                                   SampKw=SampKw,
+                                                   BufferSize=10e4,
+                                                   AvgIndex=1)
 
             self.threadAcq.NewMuxData.connect(self.on_NewSample)
             self.threadAcq.start()
