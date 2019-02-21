@@ -163,7 +163,7 @@ class WriteDigital(Daq.Task):
         self.DisableStartTrig()
         self.StopTask()
 
-    def SetDigitalSignal(self, Signal, nSamps, nLines):
+    def SetContSignal(self, Signal):
         read = c_int32()
         self.CfgSampClkTiming('ai/SampleClock', 1, Daq.DAQmx_Val_Rising,
                               Daq.DAQmx_Val_ContSamps, Signal.shape[1])
@@ -213,79 +213,98 @@ doColumns = {'Col1': ('line0', 'line1'),
 
 class ChannelsConfig():
 
+    # DCChannelIndex[ch] = (index, sortindex)
     DCChannelIndex = None
     ACChannelIndex = None
     ChNamesList = None
-    Inputs = None
-    InitConfig = None
+    AnalogInputs = None
+    DigitalOutputs = None
 
     # Events list
-    DCDataDoneEvent = None
-    DCDataEveryNEvent = None
-    ACDataDoneEvent = None
-    ACDataEveryNEvent = None
+    DataEveryNEvent = None
+    DataDoneEvent = None
 
-    def __init__(self, Channels, Config_DC=True, Config_AC=True,
-                 SampKwargs=None, ChVg='ao2', ChVs='ao1', ChVds='ao0'):
-
-        if self.Inputs is not None:
-            self.Inputs.ClearTask()
-
-        InChans = []
-
-        self.ChNamesList = sorted(Channels)
+    def _InitAnalogInputs(self):
         self.DCChannelIndex = {}
         self.ACChannelIndex = {}
+        InChans = []
         index = 0
         sortindex = 0
-        for ch in sorted(Channels):
-            if Config_DC:
+        for ch in self.ChNamesList:
+            if self.AcqDC:
                 InChans.append(aiChannels[ch][0])
                 self.DCChannelIndex[ch] = (index, sortindex)
                 index += 1
-            if Config_AC:
+                print(ch, ' DC -->', aiChannels[ch][0])
+                print('SortIndex ->', self.DCChannelIndex[ch])
+            if self.AcqAC:
                 InChans.append(aiChannels[ch][1])
                 self.ACChannelIndex[ch] = (index, sortindex)
                 index += 1
+                print(ch, ' DC -->', aiChannels[ch][1])
+                print('SortIndex ->', self.ACChannelIndex[ch])
             sortindex += 1
+        print('Input ai', InChans)
 
-        for ch in sorted(Channels):
-            if Configuration == 'DC':
-                print(ch, ' DC -> ',
-                      aiChannels[ch][0], self.DCChannelIndex[ch])
-                self.ACChannelIndex = self.DCChannelIndex
-            elif Configuration == 'AC':
-                print(ch, ' AC -> ',
-                      aiChannels[ch][1], self.ACChannelIndex[ch])
-                self.DCChannelIndex = self.ACChannelIndex
-            else:
-                print(ch, ' DC -> ',
-                      aiChannels[ch][0], self.DCChannelIndex[ch])
-                print(ch, ' AC -> ',
-                      aiChannels[ch][1], self.ACChannelIndex[ch])
-
-        self.Inputs = ReadAnalog(InChans=InChans)
+        self.AnalogInputs = ReadAnalog(InChans=InChans)
         # events linking
-        self.Inputs.EveryNEvent = self.EveryNEventCallBack
-        self.Inputs.DoneEvent = self.DoneEventCallBack
+        self.AnalogInputs.EveryNEvent = self.EveryNEventCallBack
+        self.AnalogInputs.DoneEvent = self.DoneEventCallBack
 
-    def InitDigitalChannels(self, DigColumns=None, **Kwargs):
-            DOChannels = []
-            self.DigColumns = DigColumns
+    def _InitDigitalOutputs(self):
+        DOChannels = []
 
-            for digc in sorted(self.DigColumns):
-                DOChannels.append(doColumns[digc][0])
-                DOChannels.append(doColumns[digc][1])
+        for digc in self.DigColumns:
+            DOChannels.append(doColumns[digc][0])
+            DOChannels.append(doColumns[digc][1])
 
-            self.ColumnsControl = WriteDigital(Channels=DOChannels)
+        self.DigitalOutputs = WriteDigital(Channels=DOChannels)
 
-            ChannelNames = []
-            for nRow in range(len(self.ChNamesList)):
-                for nCol in range(len(DigColumns)):
-                    ChannelNames.append(self.ChNamesList[nRow]+DigColumns[nCol])
-            self.ChannelNames = sorted(ChannelNames)
+    def _InitAnalogOutputs(self, ChVds, ChVs):
+        print('ChVds ->', ChVds)
+        print('ChVs ->', ChVs)
+        self.VsOut = WriteAnalog((ChVs,))
+        self.VdsOut = WriteAnalog((ChVds,))
 
-    def SetBias(self, Vds, Vgs):
+    def __init__(self, Channels, DigColumns,
+                 AcqDC=True, AcqAC=True,
+                 ChVds='ao0', ChVs='ao1',
+                 ACGain=1e6, DCGain=10e3):
+
+        self._InitAnalogOutputs(ChVds=ChVds, ChVs=ChVs)
+
+        self.ChNamesList = sorted(Channels)
+        self.AcqAC = AcqAC
+        self.AcqDC = AcqDC
+        self.ACGain = ACGain
+        self.DCGain = DCGain
+        self._InitAnalogInputs()
+
+        self.DigColumns = sorted(DigColumns)
+        self._InitDigitalOutputs()
+
+        MuxChannelNames = []
+        for Row in self.ChNamesList:
+            for Col in self.DigColumns:
+                MuxChannelNames.append(Row + Col)
+        self.MuxChannelNames = MuxChannelNames
+        print(self.MuxChannelNames)
+        
+        if self.AcqAC and self.AcqDC:
+            self.nChannels = len(self.MuxChannelNames)*2
+        else:
+            self.nChannels = len(self.MuxChannelNames)
+
+    def StartAcquisition(self, Fs, nSampsCo, Vgs, Vds):
+        self.SetBias(Vgs=Vgs, Vds=Vds)
+        self.SetDigitalOutputs(nSampsCo=nSampsCo)
+
+        self.OutputShape = (len(self.MuxChannelNames), self.nSampsCo)
+        EveryN = len(self.DigColumns)*self.nSampsCo
+        self.AnalogInputs.ReadContData(Fs=Fs,
+                                       EverySamps=EveryN)
+
+    def SetBias(self, Vgs, Vds):
         print('ChannelsConfig SetBias Vgs ->', Vgs, 'Vds ->', Vds)
         self.VdsOut.SetVal(Vds)
         self.VsOut.SetVal(-Vgs)
@@ -293,7 +312,7 @@ class ChannelsConfig():
         self.Vgs = Vgs
         self.Vds = Vds
 
-    def GenerateDigitalSignal(self, nSampsCo):
+    def SetDigitalOutputs(self, nSampsCo):
         DOut = np.array([], dtype=np.bool)
 
         for nCol in range(len(self.DigColumns)):
@@ -307,100 +326,102 @@ class ChannelsConfig():
             SortDInds.append(np.where(line))
 
         self.SortDInds = SortDInds
-
-        return DOut.astype(np.uint8)
+        self.DigitalOutputs.SetContSignal(DOut.astype(np.uint8))
 
     def _SortChannels(self, data, SortDict):
+        # Sort by aianalog input
         (samps, inch) = data.shape
-        sData = np.zeros((samps, len(SortDict)))
+        aiData = np.zeros((samps, len(SortDict)))
         for chn, inds in sorted(SortDict.iteritems()):
-            sData[:, inds[1]] = data[:, inds[0]]
+            aiData[:, inds[1]] = data[:, inds[0]]
 
-        LinesSorted = np.ndarray((len(self.DigColumns)*len(self.ChNamesList),
-                                 self.nSampsCo))
+        # Sort by digital columns
+        MuxData = np.ndarray(self.OutputShape)
         ind = 0
-        for chData in sData.transpose()[:, :]:
+        for chData in aiData.transpose()[:, :]:
             for Inds in self.SortDInds:
-                LinesSorted[ind, :] = chData[Inds]
+                MuxData[ind, :] = chData[Inds]
                 ind += 1
 
-        return LinesSorted
+        return aiData, MuxData
 
     def EveryNEventCallBack(self, Data):
+        _DataEveryNEvent = self.DataEveryNEvent
 
-        _DCDataEveryNEvent = self.DCDataEveryNEvent
-        _GateDataEveryNEvent = self.GateDataEveryNEvent
-        _ACDataEveryNEvent = self.ACDataEveryNEvent
+        if _DataEveryNEvent:
+            if self.AcqDC:
+                aiDataDC, MuxDataDC = self._SortChannels(Data,
+                                                         self.DCChannelIndex)
+                aiDataDC = (aiDataDC-self.BiasVd) / self.DCGain
+                MuxDataDC = (MuxDataDC-self.BiasVd) / self.DCGain
+            if self.AcqAC:
+                aiDataAC, MuxDataAC = self._SortChannels(Data,
+                                                         self.ACChannelIndex)
+                aiDataAC = aiDataAC / self.ACGain
+                MuxDataAC = MuxDataAC / self.ACGain
 
-        print(_DCDataEveryNEvent)
-        if _GateDataEveryNEvent:
-            _GateDataEveryNEvent(self._SortChannels(Data,
-                                                    self.GateChannelIndex))
-        if _DCDataEveryNEvent:
-            _DCDataEveryNEvent(self._SortChannels(Data,
-                                                  self.DCChannelIndex))
-        if _ACDataEveryNEvent:
-            _ACDataEveryNEvent(self._SortChannels(Data,
-                                                  self.ACChannelIndex))
+            if self.AcqAC and self.AcqDC:
+                aiData = np.vstack((aiDataDC, aiDataAC))
+                MuxData = np.vstack((MuxDataDC, MuxDataAC))
+                _DataEveryNEvent(aiData, MuxData)
+            elif self.AcqAC:
+                _DataEveryNEvent(aiDataAC, MuxDataAC)
+            elif self.AcqDC:
+                _DataEveryNEvent(aiDataDC, MuxDataDC)
 
     def DoneEventCallBack(self, Data):
+        print('Done callback')        
 
-        _DCDataDoneEvent = self.DCDataDoneEvent
-        _GateDataDoneEvent = self.GateDataDoneEvent
-        _ACDataDoneEvent = self.ACDataDoneEvent
-
-        if _GateDataDoneEvent:
-            _GateDataDoneEvent(self._SortChannels(Data,
-                                                  self.GateChannelIndex))
-        if _DCDataDoneEvent:
-            _DCDataDoneEvent(self._SortChannels(Data,
-                                                self.DCChannelIndex))
-        if _ACDataDoneEvent:
-            _ACDataDoneEvent(self._SortChannels(Data,
-                                                self.ACChannelIndex))
-
-    def ReadChannelsData(self, **Kwrargs):
-        self.Inputs.EveryNEvent = self.EveryNEventCallBack
-        self.SampKwargs.update(Kwrargs)
-        self.Inputs.ReadContData(**self.SampKwargs)
-
-    def __del__(self):
-        print('Delete class')
-        self.Inputs.ClearTask()
-
+#    def __del__(self):
+#        print('Delete class')
+#        self.Inputs.ClearTask()
+#
 
 ##############################################################################
 
+class Buffer():
+    def __init__(self, BufferSize, nChannels):
+        self.Buffer = np.ndarray((BufferSize, nChannels))
+        self.BufferSize = BufferSize
+        self.Ind = 0
+        self.Sigs = []
+
+    def AddSample(self, Sample):
+        self.Buffer[self.Ind, :] = Sample
+        self.Ind += 1
+        if self.Ind == self.BufferSize:
+            self.Ind = 0
+            return True
+        return False
+
 
 class DataAcquisitionThread(Qt.QThread):
-    NewSample = Qt.pyqtSignal()
+    NewMuxData = Qt.pyqtSignal()
 
-    def __init__(self, Fs, ChannelsConfigKW, SampKw,  nSamples, BufferSize,
-                 RowChannels, ColChannels, Config_DC, Config_AC):
+    def __init__(self, ChannelsConfigKW, SampKw, BufferSize, AvgIndex=1):
 
         super(DataAcquisitionThread, self).__init__()
 
-        self.Fs = float(Fs)
-        self.Ts = 1/self.Fs
-
-        self.Process = ChannelsConfig(**ChannelsConfigKW)
-
-        self.Process.DCDataEveryNEvent = self.GetData
-
-        self.nChannels = len(Channels)
-        self.nSamples = nSamples
-
-        self.Process.ReadChannelsData(**SampKw)
+        self.DaqInterface = ChannelsConfig(**ChannelsConfigKW)
+        self.DaqInterface.DataEveryNEvent = self.NewData
+        self.SampKw = SampKw
+        self.AvgIndex = AvgIndex
+        self.MuxBuffer = Buffer(BufferSize=BufferSize,
+                                nChannels=self.DaqInterface.nChannels)
 
     def run(self, *args, **kwargs):
+        self.DaqInterface.StartAcquisition(**self.SampKw)
         loop = Qt.QEventLoop()
         loop.exec_()
 
-    def GetData(self, Data):
-        print('GetData')
-        self.OutData = Data
-        self.NewSample.emit()
+    def CalcAverage(self, MuxData):
+        return Data.mean(axis=1)[None, self.AvgIndex:]
 
+    def NewData(self, aiData, MuxData):
+        if self.MuxBuffer.AddSample(self.CalcAverage(MuxData)):
+            self.OutMuxData = self.MuxBuffer.Buffer
+            self.NewMuxData.emit()
+        
 
 ##############################################################################
 
@@ -485,9 +506,9 @@ class MainWindow(Qt.QWidget):
                      }
 
         if self.threadAcq is None:
-            self.threadAcq = DataAcquisitionThread(Fs=4, **AcqKwargs['Sampling'])
+            self.threadAcq = DataAcquisitionThread()
 
-            self.threadAcq.NewSample.connect(self.on_NewSample)
+            self.threadAcq.NewMuxData.connect(self.on_NewSample)
             self.threadAcq.start()
             print('test')
 

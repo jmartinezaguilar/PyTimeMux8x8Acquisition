@@ -14,6 +14,7 @@ import quantities as pq
 from itertools import  cycle
 import h5py
 import os
+import multiprocessing as mp
 
 
 AxesProp = {
@@ -29,39 +30,60 @@ AxesProp = {
             }
 
 FigProp = {'tight_layout': True,
-           'size_inches': (10,5),
+           'size_inches': (10, 5),
 #               'facecolor': '#FFFFFF00',
            }
 
 
 class FileBuffer():
-    TMpBufferSize = 1024
-    def __init__(self, FileName, MaxSize, nChannels):
-        self.TmpBuffer = np.ndarray((self.TMpBufferSize, nChannels))
-        self.TmpInd = 0
-        self.file = h5py.File(FileName, 'w')
-        self.dset = self.file.create_dataset('data',
-                                             shape=(MaxSize, nChannels),
-                                             maxshape=(MaxSize, nChannels))
-        self.index = 0
+    def __init__(self, FileName, BufferSize, nChannels, Fs):
+        os.remove(FileName)
+        self.FileName = FileName
+        self.h5File = h5py.File(FileName, 'w')
+        self.Dset = self.h5File.create_dataset('data',
+                                               shape=(0, nChannels),
+                                               maxshape=(None, nChannels),
+                                               compression="gzip")
+
+        self.Buffer = np.ndarray((BufferSize, nChannels))
+        self.BufferSize = BufferSize
+        self.nChannels = nChannels
+        self.Ind = 0
+        self.Sigs = []
+        self.Ts = 1/float(Fs)
+        self.Fs = float(Fs)
+
+        for i in range(nChannels):
+            self.Sigs.append(NeoSignal(signal=self.Buffer[:, i],
+                                       units='V',
+                                       sampling_rate=Fs*pq.Hz,
+                                       t_start=0*pq.s,
+                                       copy=False,
+                                       name='ch{}'.format(i)))
 
     def AddSample(self, Sample):
-        self.TmpBuffer[self.TmpInd, :] = Sample
-        self.TmpInd += 1
-        if self.TmpInd == self.TMpBufferSize:
-            inds = range(self.index, self.index+self.TMpBufferSize)
-            self.dset[inds, :] = Sample
-            self.index = self.TmpBuffer            
-            self.TmpInd = 0
+        self.Buffer[self.Ind, :] = Sample
+        self.Ind += 1
+        if self.Ind == self.BufferSize:
+            self.Ind = 0
 
-            
-class Buffer():    
+            FileInd = self.Dset.shape[0]
+            self.Dset.resize((FileInd + self.BufferSize, self.nChannels))
+            self.Dset[FileInd:, :] = InBuffer.Buffer
+            self.h5File.flush()
 
+            for sig in self.Sigs:
+                sig.t_start = (FileInd * self.Ts)*pq.s
+            return True
+        return False
+
+
+class Buffer():
     def __init__(self, BufferSize, nChannels):
         self.Buffer = np.ndarray((BufferSize, nChannels))
         self.BufferSize = BufferSize
         self.Ind = 0
-        self.Sigs = []      
+        self.Sigs = []
 
     def AddSample(self, Sample):
         self.Buffer[self.Ind, :] = Sample
@@ -76,67 +98,50 @@ if __name__ == '__main__':
     plt.close('all')
 
     plt.rcParams.update({'axes.grid': True})
-    
+
     # Variable inputs
     Fs = float(2e3)
     Ts = 1/Fs
-    Fsig = 100    
+    Fsig = 100
     ReBufferSize = 10000
     nSamples = ReBufferSize*100
-    
-    nChannels = 64
-    
+
+    nChannels = 8
+
     Pcycle = np.round(Fs/Fsig)
     Fsig = Fs/Pcycle
-    
+
     tstop = Ts*(Pcycle)
     t = np.arange(0, tstop, Ts)
-    
-    
+
     samples = np.sin(2*np.pi*Fsig*t)
     InSamples = cycle(samples)
     chFacts = np.linspace(0, nChannels/10, nChannels)
-    
-    os.remove('test.h5')
-#    Buffer = FileBuffer(FileName='test.h5',
-#                            MaxSize=nSamples,
-#                            nChannels=nChannels)
-#    
-    File = h5py.File('test.h5','w')
-    FileData = File.create_dataset('data', 
-                                   shape=(0, nChannels),
-                                   maxshape=(None, nChannels))
-    InBuffer = Buffer(BufferSize=ReBufferSize,
-                      nChannels=nChannels)
-    Sigs = []
-    for i in range(nChannels):
-        Sigs.append(NeoSignal(signal=InBuffer.Buffer[:,i],
-                               units='V',
-                               sampling_rate=Fs*pq.Hz,
-                               t_start=0*pq.s,
-                               copy=False,
-                               name='ch{}'.format(i))) 
+
+    InBuffer = FileBuffer(FileName='test.h5',
+                          BufferSize=ReBufferSize,
+                          Fs=Fs,
+                          nChannels=nChannels)
 
     Slots = []
-    for sig in Sigs:
+    for sig in InBuffer.Sigs:
         Slots.append(Rplt.WaveSlot(sig))
-
     Splt = Rplt.PlotSlots(Slots, CalcSignal=False)
 
     Tstart = time.time()
     for i in range(nSamples):
         if InBuffer.AddSample(chFacts*next(InSamples)):
-            ind = FileData.shape[0]
-            FileData.resize((ind+ReBufferSize, nChannels))
-            FileData[ind:,:] = InBuffer.Buffer
-            for sig in Sigs:
-                sig.t_start = (ind * Ts)*pq.s
+#            continue
+#            print('file')
+#            pl = mp.Process(target=Splt.PlotChannels, args=(None, ))
+#            pl.start()
+#            pl.join()
             Splt.PlotChannels(None)
             Splt.Fig.canvas.draw()
-            plt.show()
-            File.flush()
-    
-    File.close()
+##            plt.show()
+#            File.flush()
+#    
+#    File.close()
 
 #    plt.plot(FileData)  
     
@@ -146,10 +151,11 @@ if __name__ == '__main__':
     print('Samples --> ', nSamples)
     print('ProcTime --> ', ProcTime)
     print('MaxSampling --> ', nSamples/ProcTime)
-    
-    file = h5py.File('test.h5', 'r')
-    data = file['data']
-    plt.plot(data)
+#    
+#    file = h5py.File('test.h5', 'r')
+#    data = file['data']
+#    plt.figure()
+#    plt.plot(data)
 
     
 #    np.sin()
