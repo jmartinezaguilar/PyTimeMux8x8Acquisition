@@ -32,8 +32,11 @@ def GetDevName():
     else:
         value = buff.value
     Dev = value + '/{}'
-    
+
     return Dev
+
+
+##############################################################################
 
 
 class ReadAnalog(Daq.Task):
@@ -45,7 +48,7 @@ class ReadAnalog(Daq.Task):
         Daq.Task.__init__(self)
         self.Channels = InChans
 
-        Dev = self.GetDevName()
+        Dev = GetDevName()
         for Ch in self.Channels:
             self.CreateAIVoltageChan(Dev.format(Ch), "",
                                      Daq.DAQmx_Val_RSE,
@@ -53,19 +56,6 @@ class ReadAnalog(Daq.Task):
                                      Daq.DAQmx_Val_Volts, None)
 
         self.AutoRegisterDoneEvent(0)
-
-    def GetDevName(self,):
-        # Get Device Name of Daq Card
-        n = 1024
-        buff = ctypes.create_string_buffer(n)
-        Daq.DAQmxGetSysDevNames(buff, n)
-        if sys.version_info >= (3,):
-            value = buff.value.decode()
-        else:
-            value = buff.value
-        Dev = value + '/{}'
-
-        return Dev
 
     def ReadContData(self, Fs, EverySamps):
         self.Fs = Fs
@@ -120,7 +110,7 @@ class WriteAnalog(Daq.Task):
     def __init__(self, Channels):
 
         Daq.Task.__init__(self)
-        Dev = self.GetDevName()
+        Dev = GetDevName()
         for Ch in Channels:
             self.CreateAOVoltageChan(Dev.format(Ch), "",
                                      -5.0, 5.0, Daq.DAQmx_Val_Volts, None)
@@ -131,6 +121,28 @@ class WriteAnalog(Daq.Task):
         self.StartTask()
         self.WriteAnalogScalarF64(1, -1, value, None)
         self.StopTask()
+
+    def SetSignal(self, Signal, nSamps):
+        read = c_int32()
+
+        self.CfgSampClkTiming('ai/SampleClock', 1, Daq.DAQmx_Val_Rising,
+                              Daq.DAQmx_Val_FiniteSamps, nSamps)
+
+        self.CfgDigEdgeStartTrig('ai/StartTrigger', Daq.DAQmx_Val_Rising)
+        self.WriteAnalogF64(nSamps, False, -1, Daq.DAQmx_Val_GroupByChannel,
+                            Signal, byref(read), None)
+        self.StartTask()
+
+    def SetContSignal(self, Signal, nSamps):
+        read = c_int32()
+
+        self.CfgSampClkTiming('ai/SampleClock', 1, Daq.DAQmx_Val_Rising,
+                              Daq.DAQmx_Val_ContSamps, nSamps)
+
+        self.CfgDigEdgeStartTrig('ai/StartTrigger', Daq.DAQmx_Val_Rising)
+        self.WriteAnalogF64(nSamps, False, -1, Daq.DAQmx_Val_GroupByChannel,
+                            Signal, byref(read), None)
+        self.StartTask()
 
 
 ##############################################################################
@@ -143,25 +155,13 @@ class WriteDigital(Daq.Task):
     '''
     def __init__(self, Channels):
         Daq.Task.__init__(self)
-        Dev = self.GetDevName()
+        Dev = GetDevName()
         for Ch in Channels:
             self.CreateDOChan(Dev.format(Ch), "",
                               Daq.DAQmx_Val_ChanForAllLines)
 
         self.DisableStartTrig()
         self.StopTask()
-
-    def GetDevName(self):
-        n = 1024
-        buff = ctypes.create_string_buffer(n)
-        Daq.DAQmxGetSysDevNames(buff, n)
-        if sys.version_info >= (3,):
-            value = buff.value.decode()
-        else:
-            value = buff.value
-        Dev = value + '/{}'
-
-        return Dev
 
     def SetDigitalSignal(self, Signal, nSamps, nLines):
         read = c_int32()
@@ -225,13 +225,11 @@ class ChannelsConfig():
     ACDataDoneEvent = None
     ACDataEveryNEvent = None
 
-    def DelInputs(self):
-        self.Inputs.ClearTask()
-
-    def InitInputs(self, Channels, Configuration='Both'):
+    def __init__(self, Channels, Config_DC=True, Config_AC=True,
+                 SampKwargs=None, ChVg='ao2', ChVs='ao1', ChVds='ao0'):
 
         if self.Inputs is not None:
-            self.DelInputs()
+            self.Inputs.ClearTask()
 
         InChans = []
 
@@ -241,12 +239,12 @@ class ChannelsConfig():
         index = 0
         sortindex = 0
         for ch in sorted(Channels):
-            if Configuration in ('DC', 'Both'):
-                InChans.append(self.aiChannels[ch][0])
+            if Config_DC:
+                InChans.append(aiChannels[ch][0])
                 self.DCChannelIndex[ch] = (index, sortindex)
                 index += 1
-            if Configuration in ('AC', 'Both'):
-                InChans.append(self.aiChannels[ch][1])
+            if Config_AC:
+                InChans.append(aiChannels[ch][1])
                 self.ACChannelIndex[ch] = (index, sortindex)
                 index += 1
             sortindex += 1
@@ -254,17 +252,17 @@ class ChannelsConfig():
         for ch in sorted(Channels):
             if Configuration == 'DC':
                 print(ch, ' DC -> ',
-                      self.aiChannels[ch][0], self.DCChannelIndex[ch])
+                      aiChannels[ch][0], self.DCChannelIndex[ch])
                 self.ACChannelIndex = self.DCChannelIndex
             elif Configuration == 'AC':
                 print(ch, ' AC -> ',
-                      self.aiChannels[ch][1], self.ACChannelIndex[ch])
+                      aiChannels[ch][1], self.ACChannelIndex[ch])
                 self.DCChannelIndex = self.ACChannelIndex
             else:
                 print(ch, ' DC -> ',
-                      self.aiChannels[ch][0], self.DCChannelIndex[ch])
+                      aiChannels[ch][0], self.DCChannelIndex[ch])
                 print(ch, ' AC -> ',
-                      self.aiChannels[ch][1], self.ACChannelIndex[ch])
+                      aiChannels[ch][1], self.ACChannelIndex[ch])
 
         self.Inputs = ReadAnalog(InChans=InChans)
         # events linking
@@ -276,8 +274,8 @@ class ChannelsConfig():
             self.DigColumns = DigColumns
 
             for digc in sorted(self.DigColumns):
-                DOChannels.append(self.doColumns[digc][0])
-                DOChannels.append(self.doColumns[digc][1])
+                DOChannels.append(doColumns[digc][0])
+                DOChannels.append(doColumns[digc][1])
 
             self.ColumnsControl = WriteDigital(Channels=DOChannels)
 
@@ -286,16 +284,6 @@ class ChannelsConfig():
                 for nCol in range(len(DigColumns)):
                     ChannelNames.append(self.ChNamesList[nRow]+DigColumns[nCol])
             self.ChannelNames = sorted(ChannelNames)
-
-    def __init__(self, Channels, Configuration='Both', SampKwrags=None,
-                 ChVg='ao2', ChVs='ao1', ChVds='ao0'):
-
-        self.InitConfig = {}
-        self.InitConfig['Channels'] = Channels
-        self.InitConfig['Configuration'] = Configuration
-
-        self.InitInputs(Channels=Channels,
-                        Configuration=Configuration)
 
     def SetBias(self, Vds, Vgs):
         print('ChannelsConfig SetBias Vgs ->', Vgs, 'Vds ->', Vds)
@@ -328,33 +316,32 @@ class ChannelsConfig():
         for chn, inds in sorted(SortDict.iteritems()):
             sData[:, inds[1]] = data[:, inds[0]]
 
-#        LinesSorted = np.ndarray((len(self.DigColumns)*len(self.ChNamesList),
-#                                 self.nSampsCo))
-#        ind = 0
-#        for chData in sData.transpose()[:, :]:
-#            for Inds in self.SortDInds:
-#                LinesSorted[ind, :] = chData[Inds]
-#                ind += 1
-#
-#        return LinesSorted
+        LinesSorted = np.ndarray((len(self.DigColumns)*len(self.ChNamesList),
+                                 self.nSampsCo))
+        ind = 0
+        for chData in sData.transpose()[:, :]:
+            for Inds in self.SortDInds:
+                LinesSorted[ind, :] = chData[Inds]
+                ind += 1
+
+        return LinesSorted
 
     def EveryNEventCallBack(self, Data):
-        print('eev')
-        self.DCDataEveryNEvent(Data)
-#        _DCDataEveryNEvent = self.DCDataEveryNEvent
-#        _GateDataEveryNEvent = self.GateDataEveryNEvent
-#        _ACDataEveryNEvent = self.ACDataEveryNEvent
-#
-#        print(_DCDataEveryNEvent)
-#        if _GateDataEveryNEvent:
-#            _GateDataEveryNEvent(self._SortChannels(Data,
-#                                                    self.GateChannelIndex))
-#        if _DCDataEveryNEvent:
-#            _DCDataEveryNEvent(self._SortChannels(Data,
-#                                                  self.DCChannelIndex))
-#        if _ACDataEveryNEvent:
-#            _ACDataEveryNEvent(self._SortChannels(Data,
-#                                                  self.ACChannelIndex))
+
+        _DCDataEveryNEvent = self.DCDataEveryNEvent
+        _GateDataEveryNEvent = self.GateDataEveryNEvent
+        _ACDataEveryNEvent = self.ACDataEveryNEvent
+
+        print(_DCDataEveryNEvent)
+        if _GateDataEveryNEvent:
+            _GateDataEveryNEvent(self._SortChannels(Data,
+                                                    self.GateChannelIndex))
+        if _DCDataEveryNEvent:
+            _DCDataEveryNEvent(self._SortChannels(Data,
+                                                  self.DCChannelIndex))
+        if _ACDataEveryNEvent:
+            _ACDataEveryNEvent(self._SortChannels(Data,
+                                                  self.ACChannelIndex))
 
     def DoneEventCallBack(self, Data):
 
@@ -374,10 +361,8 @@ class ChannelsConfig():
 
     def ReadChannelsData(self, **Kwrargs):
         self.Inputs.EveryNEvent = self.EveryNEventCallBack
-        self.SampKwarg.update(Kwrargs)
-        self.Inputs.ReadContData(**self.SampKwarg
-                çFs=Fs,
-                                 EverySamps=EverySamps)
+        self.SampKwargs.update(Kwrargs)
+        self.Inputs.ReadContData(**self.SampKwargs)
 
     def __del__(self):
         print('Delete class')
