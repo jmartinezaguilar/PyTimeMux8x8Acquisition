@@ -77,16 +77,20 @@ class ReadAnalog(Daq.Task):
         self.ContSamps = False
 
     def EveryNCallback(self):
+        print('Every')
         read = c_int32()
         data = np.zeros((self.EverySamps, len(self.Channels)))
         self.ReadAnalogF64(self.EverySamps, 10.0,
                            Daq.DAQmx_Val_GroupByScanNumber,
                            data, data.size, byref(read), None)
 
+        print('EveryN')
+
         if not self.ContSamps:
             self.data = np.vstack((self.data, data))
 
         if self.EveryNEvent:
+            print('Call')
             self.EveryNEvent(data)
 
     def DoneCallback(self, status):
@@ -352,7 +356,7 @@ class ChannelsConfig():
         print('EveryNEventCallBack')
         _DataEveryNEvent = self.DataEveryNEvent
 
-        if _DataEveryNEvent:
+        if _DataEveryNEvent is not None:
             if self.AcqDC:
                 aiDataDC, MuxDataDC = self._SortChannels(Data,
                                                          self.DCChannelIndex)
@@ -421,9 +425,10 @@ class DataAcquisitionThread(Qt.QThread):
         self.MuxBuffer = Buffer(BufferSize=BufferSize,
                                 nChannels=self.DaqInterface.nChannels)
 
+        
     def run(self, *args, **kwargs):
-        print('Run')
         self.DaqInterface.StartAcquisition(**self.SampKw)
+        print('Run')        
         loop = Qt.QEventLoop()
         loop.exec_()
 
@@ -432,8 +437,10 @@ class DataAcquisitionThread(Qt.QThread):
         return MuxData.mean(axis=1)[None, self.AvgIndex:]
 
     def NewData(self, aiData, MuxData):
-        print('NewData')
-        print(aiData.shape, MuxData.shape)
+#        print('NewData')
+        self.NewMuxData.emit()
+
+#        print(aiData.shape, MuxData.shape)
 #        print(self.MuxBuffer.AddSample(self.CalcAverage(MuxData)))
 #        
 #            self.OutMuxData = self.MuxBuffer.Buffer
@@ -491,13 +498,18 @@ ChannelsConfigKW = {'Channels': ('Ch01',
                                  'Ch04'),
                     'DigColumns': ('Col1',
                                    'Col2',
-                                   'Col3'),
+                                   'Col3',
+                                   'Col4',
+                                   'Col5',
+                                   'Col6',
+                                   'Col7',
+                                   'Col8'),
                     'AcqDC': True,
                     'AcqAC': True,
                     }
 
 SampKw = {'Fs': 100e3,
-          'nSampsCo': 10,
+          'nSampsCo': 400,
           'Vgs': 0.1,
           'Vds': 0.05}
 
@@ -532,7 +544,7 @@ class MainWindow(Qt.QWidget):
                                                    AvgIndex=1)
 
             self.threadAcq.NewMuxData.connect(self.on_NewSample)
-            self.threadAcq.start()
+            self.threadAcq.start(Qt.QThread.TimeCriticalPriority)
             print('test')
 
             self.btnAcq.setText("Stop Acq")
@@ -542,6 +554,7 @@ class MainWindow(Qt.QWidget):
 #            self.threadPlot.start()
 
         else:
+            self.threadAcq.DaqInterface.AnalogInputs.StopContData()
             self.threadAcq.terminate()
             self.threadAcq = None
             self.btnAcq.setText("Start Acq")
@@ -550,7 +563,7 @@ class MainWindow(Qt.QWidget):
         ''' Visualization of streaming data-WorkThread. '''
         Ts = time.time() - self.OldTime
         print('Sample time', Ts, 1/Ts)
-        print(self.threadAcq.OutData.shape)
+#        print(self.threadAcq.OutData.shape)
         self.OldTime = time.time()
 #        self.threadPlot.AddData(self.threadAcq.OutData)
 
