@@ -164,6 +164,7 @@ class WriteDigital(Daq.Task):
         self.StopTask()
 
     def SetContSignal(self, Signal):
+        print('SetContSignal')
         read = c_int32()
         self.CfgSampClkTiming('ai/SampleClock', 1, Daq.DAQmx_Val_Rising,
                               Daq.DAQmx_Val_ContSamps, Signal.shape[1])
@@ -172,7 +173,7 @@ class WriteDigital(Daq.Task):
                                Daq.DAQmx_Val_GroupByChannel,
                                Signal, byref(read), None)
         self.StartTask()
-
+        print('End SetSingal', read)
 
 ##############################################################################
 
@@ -241,7 +242,7 @@ class ChannelsConfig():
                 InChans.append(aiChannels[ch][1])
                 self.ACChannelIndex[ch] = (index, sortindex)
                 index += 1
-                print(ch, ' DC -->', aiChannels[ch][1])
+                print(ch, ' AC -->', aiChannels[ch][1])
                 print('SortIndex ->', self.ACChannelIndex[ch])
             sortindex += 1
         print('Input ai', InChans)
@@ -296,11 +297,11 @@ class ChannelsConfig():
             self.nChannels = len(self.MuxChannelNames)
 
     def StartAcquisition(self, Fs, nSampsCo, Vgs, Vds):
+        print('StartAcquisition')
         self.SetBias(Vgs=Vgs, Vds=Vds)
         self.SetDigitalOutputs(nSampsCo=nSampsCo)
-
-        self.OutputShape = (len(self.MuxChannelNames), self.nSampsCo)
-        EveryN = len(self.DigColumns)*self.nSampsCo
+        self.OutputShape = (len(self.MuxChannelNames), nSampsCo)
+        EveryN = len(self.DigColumns)*nSampsCo
         self.AnalogInputs.ReadContData(Fs=Fs,
                                        EverySamps=EveryN)
 
@@ -313,6 +314,7 @@ class ChannelsConfig():
         self.Vds = Vds
 
     def SetDigitalOutputs(self, nSampsCo):
+        print('SetDigitalOutputs')
         DOut = np.array([], dtype=np.bool)
 
         for nCol in range(len(self.DigColumns)):
@@ -326,9 +328,10 @@ class ChannelsConfig():
             SortDInds.append(np.where(line))
 
         self.SortDInds = SortDInds
-        self.DigitalOutputs.SetContSignal(DOut.astype(np.uint8))
+        self.DigitalOutputs.SetContSignal(Signal=DOut.astype(np.uint8))
 
     def _SortChannels(self, data, SortDict):
+        print('SortChannels')
         # Sort by aianalog input
         (samps, inch) = data.shape
         aiData = np.zeros((samps, len(SortDict)))
@@ -346,6 +349,7 @@ class ChannelsConfig():
         return aiData, MuxData
 
     def EveryNEventCallBack(self, Data):
+        print('EveryNEventCallBack')
         _DataEveryNEvent = self.DataEveryNEvent
 
         if _DataEveryNEvent:
@@ -382,16 +386,22 @@ class ChannelsConfig():
 
 class Buffer():
     def __init__(self, BufferSize, nChannels):
-        self.Buffer = np.ndarray((BufferSize, nChannels))
+        self.Buffer = np.ndarray((int(BufferSize), nChannels))
         self.BufferSize = BufferSize
         self.Ind = 0
-        self.Sigs = []
+#        self.Sigs = []
 
     def AddSample(self, Sample):
+        print('AddSample')
+        print(Sample)
+        print(self.Buffer.shape)
+        print(self.Ind)
         self.Buffer[self.Ind, :] = Sample
         self.Ind += 1
+        print('C')
         if self.Ind == self.BufferSize:
             self.Ind = 0
+            print('C')
             return True
         return False
 
@@ -407,21 +417,27 @@ class DataAcquisitionThread(Qt.QThread):
         self.DaqInterface.DataEveryNEvent = self.NewData
         self.SampKw = SampKw
         self.AvgIndex = AvgIndex
+
         self.MuxBuffer = Buffer(BufferSize=BufferSize,
                                 nChannels=self.DaqInterface.nChannels)
 
     def run(self, *args, **kwargs):
+        print('Run')
         self.DaqInterface.StartAcquisition(**self.SampKw)
         loop = Qt.QEventLoop()
         loop.exec_()
 
     def CalcAverage(self, MuxData):
+        print('CalcAverage')
         return MuxData.mean(axis=1)[None, self.AvgIndex:]
 
     def NewData(self, aiData, MuxData):
-        if self.MuxBuffer.AddSample(self.CalcAverage(MuxData)):
-            self.OutMuxData = self.MuxBuffer.Buffer
-            self.NewMuxData.emit()
+        print('NewData')
+        print(aiData.shape, MuxData.shape)
+#        print(self.MuxBuffer.AddSample(self.CalcAverage(MuxData)))
+#        
+#            self.OutMuxData = self.MuxBuffer.Buffer
+#            self.NewMuxData.emit()
 
 
 ##############################################################################
@@ -536,7 +552,7 @@ class MainWindow(Qt.QWidget):
         print('Sample time', Ts, 1/Ts)
         print(self.threadAcq.OutData.shape)
         self.OldTime = time.time()
-        self.threadPlot.AddData(self.threadAcq.OutData)
+#        self.threadPlot.AddData(self.threadAcq.OutData)
 
 
 if __name__ == '__main__':
