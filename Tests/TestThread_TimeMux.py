@@ -208,10 +208,7 @@ doColumns = {'Col1': ('line0', 'line1'),
              }
 
 
-################################Channels, DigColumns,
-                 AcqDC=True, AcqAC=True,
-                 ChVds='ao0', ChVs='ao1',
-                 ACGain=1e6, DCGain=10e3##############################################
+##############################################################################
 
 
 class ChannelsConfig():
@@ -292,7 +289,7 @@ class ChannelsConfig():
                 MuxChannelNames.append(Row + Col)
         self.MuxChannelNames = MuxChannelNames
         print(self.MuxChannelNames)
-        
+
         if self.AcqAC and self.AcqDC:
             self.nChannels = len(self.MuxChannelNames)*2
         else:
@@ -373,7 +370,7 @@ class ChannelsConfig():
                 _DataEveryNEvent(aiDataDC, MuxDataDC)
 
     def DoneEventCallBack(self, Data):
-        print('Done callback')        
+        print('Done callback')
 
 #    def __del__(self):
 #        print('Delete class')
@@ -381,6 +378,7 @@ class ChannelsConfig():
 #
 
 ##############################################################################
+
 
 class Buffer():
     def __init__(self, BufferSize, nChannels):
@@ -418,13 +416,13 @@ class DataAcquisitionThread(Qt.QThread):
         loop.exec_()
 
     def CalcAverage(self, MuxData):
-        return Data.mean(axis=1)[None, self.AvgIndex:]
+        return MuxData.mean(axis=1)[None, self.AvgIndex:]
 
     def NewData(self, aiData, MuxData):
         if self.MuxBuffer.AddSample(self.CalcAverage(MuxData)):
             self.OutMuxData = self.MuxBuffer.Buffer
             self.NewMuxData.emit()
-        
+
 
 ##############################################################################
 
@@ -482,13 +480,14 @@ ChannelsConfigKW = {'Channels': ('Ch01',
                     'AcqAC': True,
                     }
 
-SampKw = {'Fs':100e3,
-          'nSampsCo':10,
-          'Vgs': 0.1, 
+SampKw = {'Fs': 100e3,
+          'nSampsCo': 10,
+          'Vgs': 0.1,
           'Vds': 0.05}
 
-#                 ChVds='ao0', ChVs='ao1',
-#                 ACGain=1e6, DCGain=10e3
+
+##############################################################################
+
 
 class MainWindow(Qt.QWidget):
     ''' Main Window '''
@@ -523,8 +522,8 @@ class MainWindow(Qt.QWidget):
             self.btnAcq.setText("Stop Acq")
             self.OldTime = time.time()
 
-            self.threadPlot = PlottingThread(**AcqKwargs['Inputs'])
-            self.threadPlot.start()
+#            self.threadPlot = PlottingThread(**AcqKwargs['Inputs'])
+#            self.threadPlot.start()
 
         else:
             self.threadAcq.terminate()
