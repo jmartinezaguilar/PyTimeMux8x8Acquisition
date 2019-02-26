@@ -276,7 +276,6 @@ class ChannelsConfig():
                  ChVds='ao0', ChVs='ao1',
                  ACGain=1e6, DCGain=10e3):
 
-        self.nblocs = 10
         self._InitAnalogOutputs(ChVds=ChVds, ChVs=ChVs)
 
         self.ChNamesList = sorted(Channels)
@@ -301,12 +300,16 @@ class ChannelsConfig():
         else:
             self.nChannels = len(self.MuxChannelNames)
 
-    def StartAcquisition(self, Fs, nSampsCo, Vgs, Vds):
+    def StartAcquisition(self, Fs, nSampsCo, nBlocks, Vgs, Vds):
         print('StartAcquisition')
         self.SetBias(Vgs=Vgs, Vds=Vds)
         self.SetDigitalOutputs(nSampsCo=nSampsCo)
-        self.OutputShape = (len(self.MuxChannelNames), nSampsCo*self.nblocs)
-        EveryN = len(self.DigColumns)*nSampsCo*self.nblocs
+        
+        self.nBlocks = nBlocks
+        self.nSampsCo = nSampsCo
+#        self.OutputShape = (nColumns * nRows, nSampsCh, nblocs)
+        self.OutputShape = (len(self.MuxChannelNames), nSampsCo, nBlocks)
+        EveryN = len(self.DigColumns)*nSampsCo*nBlocks
         self.AnalogInputs.ReadContData(Fs=Fs,
                                        EverySamps=EveryN)
 
@@ -344,26 +347,20 @@ class ChannelsConfig():
             aiData[:, inds[1]] = data[:, inds[0]]
 
         # Sort by digital columns
+        aiData = aiData.transpose()
         MuxData = np.ndarray(self.OutputShape)
-        nSamps = self.OutputShape[1]/self.nblocs
 
-#        LinesSorted = np.ndarray((len(self.DigColumns)*len(self.ChNamesList)),
-#                                 self.nSampsCo*self.nblocs)
-
-        for indB in range(self.nblocs):
+        nColumns = len(self.DigColumns)
+        for indB in range(self.nBlocks):
+            startind = indB * self.nSampsCo * nColumns
+            stopind = self.nSampsCo * nColumns * (indB + 1)
+            Vblock = aiData[:, startind: stopind]
             ind = 0
-            for chData in aiData.transpose()[:, :]:
+            for chData in Vblock[:, :]:
                 for Inds in self.SortDInds:
-                    dat = chData[indB*nSamps*len(self.DigColumns):nSamps*len(self.DigColumns)*(indB+1)]
-                    MuxData[ind, indB*nSamps:nSamps*(indB+1)] = dat[Inds]
+                    MuxData[ind, :, indB] = chData[Inds]
                     ind += 1
 
-#        ind = 0
-#        for chData in aiData.transpose()[:, :]:
-#            for Inds in self.SortDInds:
-#                MuxData[ind, :] = chData[Inds]
-#                ind += 1
-        print(MuxData.shape)
         return aiData, MuxData
 
     def EveryNEventCallBack(self, Data):
@@ -427,7 +424,7 @@ class Buffer():
 class DataAcquisitionThread(Qt.QThread):
     NewMuxData = Qt.pyqtSignal()
 
-    def __init__(self, ChannelsConfigKW, SampKw, BufferSize, AvgIndex=1):
+    def __init__(self, ChannelsConfigKW, SampKw, BufferSize, AvgIndex=5):
 
         super(DataAcquisitionThread, self).__init__()
 
@@ -448,10 +445,13 @@ class DataAcquisitionThread(Qt.QThread):
 
     def CalcAverage(self, MuxData):
         print('CalcAverage')
-        return MuxData.mean(axis=1)[None, self.AvgIndex:]
+        
+#        Avg = np.mean(LinesSorted[:,-2:,:], axis=1)
+        return np.mean(MuxData[:,self.AvgIndex:,:], axis=1)
 
     def NewData(self, aiData, MuxData):
 #        print('NewData')
+        self.OutData = self.CalcAverage(MuxData)
         self.NewMuxData.emit()
 
 #        print(aiData.shape, MuxData.shape)
@@ -489,7 +489,7 @@ class PlottingThread(Qt.QThread):
         while True:
             if self.NewData is not None:
                 for i in range(self.nChannels):
-                    self.Curves[i].setData(self.NewData[:, i])
+                    self.Curves[i].setData(self.NewData[i, :])
 #                self.Ax.clear()
 #                self.Ax.plot(self.NewData)
 #                self.Fig.canvas.draw()
@@ -523,7 +523,8 @@ ChannelsConfigKW = {'Channels': ('Ch01',
                     }
 
 SampKw = {'Fs': 100e3,
-          'nSampsCo': 100,
+          'nSampsCo': 6,
+          'nBlocks': 1000,
           'Vgs': 0.1,
           'Vds': 0.05}
 
@@ -564,8 +565,8 @@ class MainWindow(Qt.QWidget):
             self.btnAcq.setText("Stop Acq")
             self.OldTime = time.time()
 
-#            self.threadPlot = PlottingThread(**AcqKwargs['Inputs'])
-#            self.threadPlot.start()
+            self.threadPlot = PlottingThread(nChannels=len(self.threadAcq.DaqInterface.MuxChannelNames)*2)
+            self.threadPlot.start()
 
         else:
             self.threadAcq.DaqInterface.AnalogInputs.StopContData()
@@ -576,10 +577,12 @@ class MainWindow(Qt.QWidget):
     def on_NewSample(self):
         ''' Visualization of streaming data-WorkThread. '''
         Ts = time.time() - self.OldTime
-        print('Sample time', Ts, 1/Ts)
+        retime = len(ChannelsConfigKW['DigColumns'])*SampKw['nSampsCo']*SampKw['nBlocks']*1/SampKw['Fs']        
+        print('req time', retime,'Sample time', Ts, 1/Ts)
 #        print(self.threadAcq.OutData.shape)
         self.OldTime = time.time()
-#        self.threadPlot.AddData(self.threadAcq.OutData)
+        print(self.threadAcq.OutData.shape)
+        self.threadPlot.AddData(self.threadAcq.OutData)
 
 
 if __name__ == '__main__':
