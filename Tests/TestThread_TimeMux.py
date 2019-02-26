@@ -276,6 +276,7 @@ class ChannelsConfig():
                  ChVds='ao0', ChVs='ao1',
                  ACGain=1e6, DCGain=10e3):
 
+        self.nblocs = 10
         self._InitAnalogOutputs(ChVds=ChVds, ChVs=ChVs)
 
         self.ChNamesList = sorted(Channels)
@@ -305,7 +306,7 @@ class ChannelsConfig():
         self.SetBias(Vgs=Vgs, Vds=Vds)
         self.SetDigitalOutputs(nSampsCo=nSampsCo)
         self.OutputShape = (len(self.MuxChannelNames), nSampsCo*self.nblocs)
-        EveryN = len(self.DigColumns)*nSampsCo
+        EveryN = len(self.DigColumns)*nSampsCo*self.nblocs
         self.AnalogInputs.ReadContData(Fs=Fs,
                                        EverySamps=EveryN)
 
@@ -344,6 +345,7 @@ class ChannelsConfig():
 
         # Sort by digital columns
         MuxData = np.ndarray(self.OutputShape)
+        nSamps = self.OutputShape[1]/self.nblocs
 
 #        LinesSorted = np.ndarray((len(self.DigColumns)*len(self.ChNamesList)),
 #                                 self.nSampsCo*self.nblocs)
@@ -352,8 +354,8 @@ class ChannelsConfig():
             ind = 0
             for chData in aiData.transpose()[:, :]:
                 for Inds in self.SortDInds:
-                    dat = chData[indB*self.nSampsCo*len(self.DigColumns):self.nSampsCo*len(self.DigColumns)*(indB+1)]
-                    MuxData[ind, indB*self.nSampsCo:self.nSampsCo*(indB+1)] = dat[Inds]
+                    dat = chData[indB*nSamps*len(self.DigColumns):nSamps*len(self.DigColumns)*(indB+1)]
+                    MuxData[ind, indB*nSamps:nSamps*(indB+1)] = dat[Inds]
                     ind += 1
 
 #        ind = 0
@@ -361,7 +363,7 @@ class ChannelsConfig():
 #            for Inds in self.SortDInds:
 #                MuxData[ind, :] = chData[Inds]
 #                ind += 1
-
+        print(MuxData.shape)
         return aiData, MuxData
 
     def EveryNEventCallBack(self, Data):
@@ -521,7 +523,7 @@ ChannelsConfigKW = {'Channels': ('Ch01',
                     }
 
 SampKw = {'Fs': 100e3,
-          'nSampsCo': 400,
+          'nSampsCo': 100,
           'Vgs': 0.1,
           'Vds': 0.05}
 
