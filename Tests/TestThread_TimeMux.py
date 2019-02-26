@@ -304,7 +304,7 @@ class ChannelsConfig():
         print('StartAcquisition')
         self.SetBias(Vgs=Vgs, Vds=Vds)
         self.SetDigitalOutputs(nSampsCo=nSampsCo)
-        self.OutputShape = (len(self.MuxChannelNames), nSampsCo)
+        self.OutputShape = (len(self.MuxChannelNames), nSampsCo*self.nblocs)
         EveryN = len(self.DigColumns)*nSampsCo
         self.AnalogInputs.ReadContData(Fs=Fs,
                                        EverySamps=EveryN)
@@ -344,11 +344,23 @@ class ChannelsConfig():
 
         # Sort by digital columns
         MuxData = np.ndarray(self.OutputShape)
-        ind = 0
-        for chData in aiData.transpose()[:, :]:
-            for Inds in self.SortDInds:
-                MuxData[ind, :] = chData[Inds]
-                ind += 1
+
+#        LinesSorted = np.ndarray((len(self.DigColumns)*len(self.ChNamesList)),
+#                                 self.nSampsCo*self.nblocs)
+
+        for indB in range(self.nblocs):
+            ind = 0
+            for chData in aiData.transpose()[:, :]:
+                for Inds in self.SortDInds:
+                    dat = chData[indB*self.nSampsCo*len(self.DigColumns):self.nSampsCo*len(self.DigColumns)*(indB+1)]
+                    MuxData[ind, indB*self.nSampsCo:self.nSampsCo*(indB+1)] = dat[Inds]
+                    ind += 1
+
+#        ind = 0
+#        for chData in aiData.transpose()[:, :]:
+#            for Inds in self.SortDInds:
+#                MuxData[ind, :] = chData[Inds]
+#                ind += 1
 
         return aiData, MuxData
 
