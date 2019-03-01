@@ -165,8 +165,8 @@ SaveFilePars = [{'name': 'Save File',
 
 class SamplingSettingsParameters(pTypes.GroupParameter):
 
-    DigColumns = None
-    Channels = None
+    Columns = None
+    Rows = None
 
     def __init__(self, **kwargs):
         super(SamplingSettingsParameters, self).__init__(**kwargs)
@@ -201,20 +201,34 @@ class SamplingSettingsParameters(pTypes.GroupParameter):
         self.GenSampKwargs()
 
     def on_Row_Changed(self):
-        Channels = []
+        Rows = []
         for p in self.RowChannels.children():
             if p.value() is True:
-                Channels.append(p.name())
-        self.Channels = Channels
+                Rows.append(p.name())
+        self.Rows = Rows
         self.GenChannelsConfigKwargs()
 
     def on_Col_Changed(self):
-        DigColumns = []
+        Columns = []
         for p in self.ColChannels.children():
             if p.value() is True:
-                DigColumns.append(p.name())
-        self.DigColumns = DigColumns
+                Columns.append(p.name())
+        self.Columns = Columns
         self.GenChannelsConfigKwargs()
+
+    def GenerateChannelsNames(self):
+        if self.Columns:
+            Ind = 0
+            ChannelNames = {}
+            for ty in self.Config:
+                for Row in self.Rows:
+                    for Col in self.Columns:
+                        if self.Config[ty] is True:
+#                            ty = ty.split('Acq')
+                            ChannelNames[Row + Col + ty.split('Acq')[1]] = Ind
+                            Ind += 1
+            self.ChannelNames = ChannelNames
+            print(self.ChannelNames)
 
     def GetConfig(self):
         self.GenChannelsConfigKwargs()
@@ -227,14 +241,18 @@ class SamplingSettingsParameters(pTypes.GroupParameter):
 
     def GenChannelsConfigKwargs(self):
         ChanKwargs = {}
+        Config = {}
         for p in self.ChsConfig.children():
             if p.name() is 'Channels':
-                ChanKwargs[p.name()] = self.Channels
+                ChanKwargs[p.name()] = self.Rows
             elif p.name() is 'DigColumns':
-                ChanKwargs[p.name()] = self.DigColumns
+                ChanKwargs[p.name()] = self.Columns
             else:
                 ChanKwargs[p.name()] = p.value()
-        print(self.Channels)
+                Config[p.name()] = p.value()
+
+        self.Config = Config
+        self.GenerateChannelsNames()
         print(ChanKwargs)
 
 
