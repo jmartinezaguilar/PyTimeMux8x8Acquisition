@@ -89,6 +89,13 @@ class DataGeneratorParameters(pTypes.GroupParameter):
             GenKwargs[p.name()] = p.value()
         return GenKwargs
 
+    def GetChannels(self):
+        Channels = {}
+        for i in range(self.NChannels.value()):
+            chn = 'Ch{0:02}'.format(i)
+            Channels[chn] = i
+        return Channels
+
 
 class DataSamplingThread(Qt.QThread):
     ''' Data generator '''

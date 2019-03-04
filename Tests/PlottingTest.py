@@ -24,6 +24,7 @@ from scipy.signal import welch
 
 import PyTimeMux8x8Acquisition.PyTMCore.FileModule as FileMod
 import PyTimeMux8x8Acquisition.PyTMCore.SampleGenerator as SampGen
+import PyTimeMux8x8Acquisition.PyTMCore.PlotModule as PltMod
 
 
 class MainWindow(Qt.QWidget):
@@ -46,6 +47,9 @@ class MainWindow(Qt.QWidget):
                                                          name='Record File')
         self.Parameters.addChild(self.FileParameters)
         
+        self.PlotParams = PltMod.PlotterParameters(name='Plot options')
+        self.PlotParams.SetChannels(self.DataGenParams.GetChannels())
+        self.Parameters.addChild(self.PlotParams)
         
         self.Parameters.sigTreeStateChanged.connect(self.on_pars_changed)
         self.treepar = ParameterTree()
@@ -81,6 +85,9 @@ class MainWindow(Qt.QWidget):
         print('  change:    %s'% change)
         print('  data:      %s'% str(data))
         print('  ----------')
+
+        if childName == 'Data Generator.nChannels':
+            self.PlotParams.SetChannels(self.DataGenParams.GetChannels())
 
     def on_btnGen(self):
         if self.threadGen is None:
