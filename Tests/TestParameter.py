@@ -6,20 +6,12 @@ Created on Thu Feb 28 11:02:02 2019
 @author: aguimera
 """
 from __future__ import print_function
-import os
 from PyQt5 import Qt
 from PyQt5.QtWidgets import QFileDialog
+from pyqtgraph.parametertree import Parameter, ParameterTree, ParameterItem, registerParameterType
 
 import numpy as np
-import time
-
-import pyqtgraph as pg
-
 import pyqtgraph.parametertree.parameterTypes as pTypes
-from pyqtgraph.parametertree import Parameter, ParameterTree, ParameterItem, registerParameterType
-from itertools import  cycle
-import copy
-from scipy.signal import welch
 
 SampSettingConf = ({'name': 'Channels Config',
                     'type': 'group',
@@ -132,7 +124,16 @@ SampSettingConf = ({'name': 'Channels Config',
                                   'step': 0.01,
                                   'limits': (0.10, 50),
                                   'siPrefix': True,
-                                  'suffix': 's'},
+                                  'suffix': 's',
+                                  'readonly': True},
+                                 {'title': 'Fs by Channel',
+                                  'name': 'FsxCh',
+                                  'type': 'float',
+                                  'value': 1e4,
+                                  'step': 100,
+                                  'siPrefix': True,
+                                  'suffix': 'Hz',
+                                  'readonly': True},
                                  {'name': 'Vds',
                                   'type': 'float',
                                   'value': 0.05,
@@ -192,12 +193,20 @@ class SamplingSettingsParameters(pTypes.GroupParameter):
         self.ColChannels.sigTreeStateChanged.connect(self.on_Col_Changed)
         self.ChsConfig.sigTreeStateChanged.connect(self.GetConfig)
         self.Fs.sigValueChanged.connect(self.on_Fs_Changed)
+        self.SampsCo.sigValueChanged.connect(self.on_Fs_Changed)
+        self.nBlocks.sigValueChanged.connect(self.on_Fs_Changed)
 
     def on_Fs_Changed(self):
-        print(self.Fs.value())
-#            retime = len(self.DigColumns)*self.SampsCo*self.nBlocks*1/self.Fs.value()
-#            print(retime)
-#            self.SampSet.param('Inttime').value(retime)
+        j = 0
+        for i in self.Config.values():
+            if i is True:
+                j += 1
+
+        Ts = 1/self.Fs.value()
+        FsxCh = 1/(Ts*self.SampsCo.value()*len(self.Columns)*j)
+        IntTime = (1/(FsxCh)*self.nBlocks.value())
+        self.SampSet.param('FsxCh').setValue(FsxCh)
+        self.SampSet.param('Inttime').setValue(IntTime)
         self.GenSampKwargs()
 
     def on_Row_Changed(self):
@@ -215,6 +224,7 @@ class SamplingSettingsParameters(pTypes.GroupParameter):
                 Columns.append(p.name())
         self.Columns = Columns
         self.GenChannelsConfigKwargs()
+        self.on_Fs_Changed()
 
     def GenerateChannelsNames(self):
         if self.Columns:
@@ -224,14 +234,13 @@ class SamplingSettingsParameters(pTypes.GroupParameter):
                 for Row in self.Rows:
                     for Col in self.Columns:
                         if self.Config[ty] is True:
-#                            ty = ty.split('Acq')
                             ChannelNames[Row + Col + ty.split('Acq')[1]] = Ind
                             Ind += 1
             self.ChannelNames = ChannelNames
-            print(self.ChannelNames)
 
     def GetConfig(self):
         self.GenChannelsConfigKwargs()
+        self.on_Fs_Changed()
 
     def GenSampKwargs(self):
         GenKwargs = {}
@@ -292,7 +301,7 @@ class MainWindow(Qt.QWidget):
         self.Parameters.sigTreeStateChanged.connect(self.on_pars_changed)
         self.FilePars.param('Save File').sigActivated.connect(self.FileDialog)
 
-        self.setGeometry(600, 30, 400, 700)
+        self.setGeometry(600, 30, 450, 700)
         self.setWindowTitle('MainWindow')
 
         self.btnGen.clicked.connect(self.on_btnGen)
