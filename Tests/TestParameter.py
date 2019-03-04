@@ -197,13 +197,10 @@ class SamplingSettingsParameters(pTypes.GroupParameter):
         self.nBlocks.sigValueChanged.connect(self.on_Fs_Changed)
 
     def on_Fs_Changed(self):
-        j = 0
-        for i in self.Config.values():
-            if i is True:
-                j += 1
-
         Ts = 1/self.Fs.value()
-        FsxCh = 1/(Ts*self.SampsCo.value()*len(self.Columns)*j)
+        FsxCh = 1/(Ts*self.SampsCo.value()*len(self.Columns))
+        if self.Config['AcqDC'] and self.Config['AcqAC'] is True:
+            FsxCh = FsxCh * 0.5
         IntTime = (1/(FsxCh)*self.nBlocks.value())
         self.SampSet.param('FsxCh').setValue(FsxCh)
         self.SampSet.param('Inttime').setValue(IntTime)
