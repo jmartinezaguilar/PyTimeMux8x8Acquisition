@@ -18,6 +18,11 @@ import numpy as np
 import time
 import PyDAQmx as Daq
 
+#import PyTMCore.PlotModule as PyPlot
+#import PyTMCore.FileModule as PyFile
+#import PyTMCore.SampleGenerator as PyGen
+#import PyTMCore.ParameterModule as PyParam
+
 
 ##############################################################################
 
@@ -436,27 +441,25 @@ class DataAcquisitionThread(Qt.QThread):
         self.MuxBuffer = Buffer(BufferSize=BufferSize,
                                 nChannels=self.DaqInterface.nChannels)
 
-        
     def run(self, *args, **kwargs):
         self.DaqInterface.StartAcquisition(**self.SampKw)
-        print('Run')        
+        print('Run')
         loop = Qt.QEventLoop()
         loop.exec_()
 
     def CalcAverage(self, MuxData):
         print('CalcAverage')
-        
+
 #        Avg = np.mean(LinesSorted[:,-2:,:], axis=1)
-        return np.mean(MuxData[:,self.AvgIndex:,:], axis=1)
+        return np.mean(MuxData[:, self.AvgIndex:, :], axis=1)
 
     def NewData(self, aiData, MuxData):
-#        print('NewData')
         self.OutData = self.CalcAverage(MuxData)
         self.NewMuxData.emit()
 
 #        print(aiData.shape, MuxData.shape)
 #        print(self.MuxBuffer.AddSample(self.CalcAverage(MuxData)))
-#        
+#
 #            self.OutMuxData = self.MuxBuffer.Buffer
 #            self.NewMuxData.emit()
 
