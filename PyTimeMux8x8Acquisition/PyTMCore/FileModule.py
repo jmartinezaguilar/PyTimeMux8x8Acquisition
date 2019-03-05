@@ -52,19 +52,18 @@ class SaveFileParameters(pTypes.GroupParameter):
 
 class FileBuffer():
     def __init__(self, FileName, MaxSize, nChannels):
-        self.FileName = FileName
+        self.FileBase = FileName.split('.h5')[0]
         self.PartCount = 0
         self.nChannels = nChannels
         self.MaxSize = MaxSize
         self._initFile()
 
     def _initFile(self):
-        if self.PartCount == 0:
-            FileName = self.FileName
+        if self.MaxSize is not None:
+            FileName = '{}_{}.h5'.format(self.FileBase, self.PartCount)
         else:
-            fn = self.FileName.split('.h5')[0]
-            FileName = '{}_{}.h5'.format(fn, self.PartCount)
-
+            FileName = self.FileBase + '.h5'
+        self.FileName = FileName
         self.PartCount += 1
         self.h5File = h5py.File(FileName, 'w')
         self.Dset = self.h5File.create_dataset('data',
@@ -81,6 +80,7 @@ class FileBuffer():
 
         stat = os.stat(self.FileName)
         if stat.st_size > self.MaxSize:
+#            print(stat.st_size, self.MaxSize)
             self._initFile()
 
 

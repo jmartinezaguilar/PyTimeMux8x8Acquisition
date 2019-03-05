@@ -23,7 +23,7 @@ GenFsPar = {'name': 'Fs',
 GenIntTimePar = {'name': 'IntervalTime',
                  'tip': 'FsKw.Fs',
                  'type': 'float',
-                 'value': 3,
+                 'value': 0.9,
                  'step': 0.1,
                  'siPrefix': True,
                  'suffix': 's'}
@@ -115,7 +115,7 @@ class DataSamplingThread(Qt.QThread):
         self.IntervalTime = IntervalTime*1000
         self.Timer.setInterval(self.IntervalTime)
 
-        Pcycle = np.round(self.Fs/1)
+        Pcycle = np.round(self.Fs/10)
         Fsig = Fs/Pcycle
 
         Ts = 1/self.Fs

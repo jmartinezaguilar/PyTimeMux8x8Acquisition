@@ -129,6 +129,10 @@ class MainWindow(Qt.QWidget):
             self.threadPlotter = PltMod.Plotter(**PlotterKwargs)
             self.threadPlotter.start()
 
+            self.threadPSDPlotter = PltMod.PSDPlotter(nChannels=GenKwargs['nChannels'],
+                                                      ChannelConf=PlotterKwargs['ChannelConf'])
+            self.threadPSDPlotter.start()            
+
             self.btnGen.setText("Stop Gen")
             self.OldTime = time.time()
             self.Tss = []
@@ -154,6 +158,7 @@ class MainWindow(Qt.QWidget):
         if self.threadSave is not None:
             self.threadSave.AddData(self.threadGen.OutData)
         self.threadPlotter.AddData(self.threadGen.OutData)
+        self.threadPSDPlotter.AddData(self.threadGen.OutData)
         print('Sample time', Ts, np.mean(self.Tss))
 
 

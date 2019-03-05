@@ -11,6 +11,7 @@ import pyqtgraph as pg
 import copy
 from PyQt5 import Qt
 import numpy as np
+from scipy.signal import welch
 
 
 ChannelPars = {'name': 'Ch01',
@@ -121,6 +122,8 @@ class PlotterParameters(pTypes.GroupParameter):
         PlotterKwargs['ChannelConf'] = ChannelConf
         return PlotterKwargs
 
+##############################################################################
+
 
 class PgPlotWindow(Qt.QWidget):
     def __init__(self):
@@ -129,6 +132,8 @@ class PgPlotWindow(Qt.QWidget):
         self.pgLayout = pg.GraphicsLayoutWidget()
         layout.addWidget(self.pgLayout)
         self.show()
+
+##############################################################################
 
 
 class Buffer2D(np.ndarray):
@@ -166,7 +171,7 @@ class Buffer2D(np.ndarray):
         self.totalind += newsize
 
     def IsFilled(self):
-        return self.bufferind >= self.shape[0]
+        return self.counter >= self.shape[0]
 
     def GetTimes(self, Size):
         stop = self.Ts * self.totalind
@@ -176,6 +181,8 @@ class Buffer2D(np.ndarray):
 
     def Reset(self):
         self.counter = 0
+
+##############################################################################
 
 
 labelStyle = {'color': '#FFF',
@@ -214,7 +221,10 @@ class Plotter(Qt.QThread):
                            ch['name'],
                            units='A',
                            **labelStyle)
-                p.setDownsampling(mode='peak')
+                p.setDownsampling(auto=True,
+                                  mode='subsample',
+#                                  mode='peak',
+                                  )
                 p.setClipToView(True)
                 c = p.plot(pen=pg.mkPen(ch['color'],
                                         width=ch['width']))
@@ -248,6 +258,140 @@ class Plotter(Qt.QThread):
 #                                        self.BufferSize)
             else:
 #                pg.QtGui.QApplication.processEvents()
+                Qt.QThread.msleep(10)
+
+    def AddData(self, NewData):
+        self.Buffer.AddData(NewData)
+
+
+##############################################################################
+
+#PSDPars = ({'name': 'PSD Enable',
+#            'readonly': True,
+#            'type': 'bool',
+#            'siPrefix': True,
+#            'suffix': 'Hz'},
+#           {'name': 'PSD Enable',            
+#            'type': 'bool',
+#            'value': True}
+#           {'name': 'ViewBuffer',
+#            'type': 'float',
+#            'value': 30,
+#            'step': 1,
+#            'siPrefix': True,
+#            'suffix': 's'},
+#           {'name': 'ViewTime',
+#            'type': 'float',
+#            'value': 10,
+#            'step': 1,
+#            'siPrefix': True,
+#            'suffix': 's'},
+#           {'name': 'RefreshTime',
+#            'type': 'float',
+#            'value': 4,
+#            'step': 1,
+#            'siPrefix': True,
+#            'suffix': 's'},
+#           {'name': 'Windows',
+#            'type': 'int',
+#            'value': 1},
+#           {'name': 'Channels',
+#            'type': 'group',
+#            'children': []},)
+#
+#
+#class PSDParameters(pTypes.GroupParameter):
+#    def __init__(self, **kwargs):
+#        pTypes.GroupParameter.__init__(self, **kwargs)
+#
+##        self.QTparent = QTparent
+#        self.addChildren(PlotterPars)
+#        self.param('Windows').sigValueChanged.connect(self.on_WindowsChange)
+#
+#    def on_WindowsChange(self):
+#        print('tyest')
+#        chs = self.param('Channels').children()
+#        chPWind = int(len(chs)/self.param('Windows').value())
+#        for ch in chs:
+#            ind = ch.child('Input').value()
+#            ch.child('Window').setValue(int(ind/chPWind))
+#
+#    def SetChannels(self, Channels):
+#        self.param('Channels').clearChildren()
+#        nChannels = len(Channels)
+#        self.param('nChannels').setValue(nChannels)
+#        chPWind = int(nChannels/self.param('Windows').value())
+#        Chs = []
+#        for chn, ind in Channels.items():
+#            Ch = copy.deepcopy(ChannelPars)
+#            pen = pg.mkPen((ind, 1.3*nChannels))
+#            Ch['name'] = chn
+#            Ch['children'][0]['value'] = chn
+#            Ch['children'][1]['value'] = pen.color()
+#            Ch['children'][3]['value'] = int(ind/chPWind)
+#            Ch['children'][4]['value'] = ind
+#            Chs.append(Ch)
+#
+#        self.param('Channels').addChildren(Chs)
+#
+#    def GetParams(self):
+#        PlotterKwargs = {}
+#        for p in self.children():
+#            if p.name() in ('Channels', 'Windows'):
+#                continue
+#            PlotterKwargs[p.name()] = p.value()
+#
+#        ChannelConf = {}
+#        for i in range(self.param('Windows').value()):
+#            ChannelConf[i] = []
+#
+#        for p in self.param('Channels').children():
+#            chp = {}
+#            for pp in p.children():
+#                chp[pp.name()] = pp.value()
+#            ChannelConf[chp['Window']].append(chp.copy())
+#        PlotterKwargs['ChannelConf'] = ChannelConf
+#        return PlotterKwargs
+#
+
+
+
+class PSDPlotter(Qt.QThread):
+    def __init__(self, nChannels, ChannelConf):
+        super(PSDPlotter, self).__init__()
+        
+        self.nFFT = 2**15
+        self.nChannels = nChannels
+        self.Fs = 10e3
+        self.BufferSize = self.nFFT * 5
+        self.Buffer = Buffer2D(self.Fs, self.nChannels, self.BufferSize/self.Fs)
+
+        self.Plots = [None]*nChannels
+        self.Curves = [None]*nChannels
+        
+        self.wind = PgPlotWindow()
+        self.wind.pgLayout.nextRow()
+        p = self.wind.pgLayout.addPlot()
+        p.setLogMode(True, True)
+        p.setLabel('bottom', 'Frequency', units='Hz', **labelStyle)
+        for win, chs in ChannelConf.items():
+            for ch in chs:
+                c = p.plot(pen=pg.mkPen(ch['color'],
+                                        width=ch['width']))
+                self.Plots[ch['Input']] = p
+                self.Curves[ch['Input']] = c
+
+    def run(self, *args, **kwargs):
+        while True:
+            if self.Buffer.IsFilled():
+                ff, psd = welch(self.Buffer,
+                                fs=self.Fs,
+                                nperseg=self.nFFT,
+                                axis=0)
+                self.Buffer.Reset()
+                for i in range(self.nChannels):
+                    self.Curves[i].setData(ff, psd[:, i])
+            else:
                 Qt.QThread.msleep(10)
 
     def AddData(self, NewData):
