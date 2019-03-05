@@ -10,6 +10,7 @@ import pyqtgraph.parametertree.parameterTypes as pTypes
 from PyQt5.QtWidgets import QFileDialog
 import h5py
 from PyQt5 import Qt
+import os
 
 
 SaveFilePars = [{'name': 'Save File',
@@ -21,8 +22,8 @@ SaveFilePars = [{'name': 'Save File',
                  'type': 'int',
                  'siPrefix': True,
                  'suffix': 'B',
-                 'limits': (1e6, 1e9),
-                 'step': 1e6,
+                 'limits': (1e6, 1e12),
+                 'step': 100e6,
                  'value': 50e6}
                 ]
 
@@ -50,13 +51,25 @@ class SaveFileParameters(pTypes.GroupParameter):
 
 
 class FileBuffer():
-    def __init__(self, FileName, nChannels):
+    def __init__(self, FileName, MaxSize, nChannels):
         self.FileName = FileName
+        self.PartCount = 0
         self.nChannels = nChannels
+        self.MaxSize = MaxSize
+        self._initFile()
+
+    def _initFile(self):
+        if self.PartCount == 0:
+            FileName = self.FileName
+        else:
+            fn = self.FileName.split('.h5')[0]
+            FileName = '{}_{}.h5'.format(fn, self.PartCount)
+
+        self.PartCount += 1
         self.h5File = h5py.File(FileName, 'w')
         self.Dset = self.h5File.create_dataset('data',
-                                               shape=(0, nChannels),
-                                               maxshape=(None, nChannels),
+                                               shape=(0, self.nChannels),
+                                               maxshape=(None, self.nChannels),
                                                compression="gzip")
 
     def AddSample(self, Sample):
@@ -66,13 +79,18 @@ class FileBuffer():
         self.Dset[FileInd:, :] = Sample
         self.h5File.flush()
 
+        stat = os.stat(self.FileName)
+        if stat.st_size > self.MaxSize:
+            self._initFile()
+
 
 class DataSavingThread(Qt.QThread):
     def __init__(self, FileName, nChannels, MaxSize=None):
         super(DataSavingThread, self).__init__()
         self.NewData = None
-        self.FileBuff = FileBuffer(FileName,
-                                   nChannels)
+        self.FileBuff = FileBuffer(FileName=FileName,
+                                   nChannels=nChannels,
+                                   MaxSize=MaxSize)
 
     def run(self, *args, **kwargs):
         while True:

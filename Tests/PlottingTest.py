@@ -117,9 +117,11 @@ class MainWindow(Qt.QWidget):
             else:
                 if os.path.isfile(FileName):
                     print('Remove File')
-                    os.remove(FileName)            
+                    os.remove(FileName)  
+                MaxSize = self.FileParameters.param('MaxSize').value()
                 self.threadSave = FileMod.DataSavingThread(FileName=FileName,
-                                                           nChannels=GenKwargs['nChannels'])
+                                                           nChannels=GenKwargs['nChannels'],
+                                                           MaxSize=MaxSize)
                 self.threadSave.start()
 
             PlotterKwargs = self.PlotParams.GetParams()
