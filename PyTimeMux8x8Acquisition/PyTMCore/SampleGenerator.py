@@ -23,7 +23,7 @@ GenFsPar = {'name': 'Fs',
 GenIntTimePar = {'name': 'IntervalTime',
                  'tip': 'FsKw.Fs',
                  'type': 'float',
-                 'value': 1,
+                 'value': 3,
                  'step': 0.1,
                  'siPrefix': True,
                  'suffix': 's'}
@@ -126,9 +126,9 @@ class DataSamplingThread(Qt.QThread):
         self.InSamples = cycle(samples)
         self.chFacts = np.linspace(0, nChannels/10, nChannels)
 
-        for isamp in range(self.nSamples):
-            samps = self.chFacts * next(self.InSamples)
-            self.OutData[isamp, :] = samps
+#        for isamp in range(self.nSamples):
+#            samps = self.chFacts * next(self.InSamples)
+#            self.OutData[isamp, :] = samps
 
     def run(self, *args, **kwargs):
         self.Timer.start()
@@ -141,9 +141,9 @@ class DataSamplingThread(Qt.QThread):
 #            self.NewSample.emit()
 
     def GenData(self):
-#        for isamp in range(self.nSamples):
-#            samps = self.chFacts * next(self.InSamples)
-#            self.OutData[isamp, :] = samps
-#        self.OutData = self.OutData + np.random.sample(self.OutData.shape)            
+        for isamp in range(self.nSamples):
+            samps = self.chFacts * next(self.InSamples)
+            self.OutData[isamp, :] = samps
+        self.OutData = self.OutData + np.random.sample(self.OutData.shape)            
 #        self.OutData = np.random.sample(self.OutData.shape)
         self.NewSample.emit()
