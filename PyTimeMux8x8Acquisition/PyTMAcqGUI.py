@@ -164,8 +164,8 @@ class MainWindow(Qt.QWidget):
         self.Tss.append(Ts)
         self.OldTime = time.time()
         if self.threadSave is not None:
-            self.threadSave.AddData(self.threadGen.OutData)
-        self.threadPlotter.AddData(self.threadGen.OutData)
+            self.threadSave.AddData(self.threadAcq.OutData)
+        self.threadPlotter.AddData(self.threadAcq.OutData)
 #        self.threadPSDPlotter.AddData(self.threadGen.OutData)
         print('Sample time', Ts, np.mean(self.Tss))
 
