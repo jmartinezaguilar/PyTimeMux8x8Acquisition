@@ -220,7 +220,7 @@ class SampSetParam(pTypes.GroupParameter):
                             ChannelNames[Row + Col + ty.split('Acq')[1]] = Ind
                             Ind += 1
             self.ChannelNames = ChannelNames
-        return self.ChannelNames
+            return ChannelNames
 
     def GetConfig(self):
         self.GenChannelsConfigKwargs()
@@ -230,7 +230,6 @@ class SampSetParam(pTypes.GroupParameter):
         GenKwargs = {}
         for p in self.SampSet.children():
             GenKwargs[p.name()] = p.value()
-        print(GenKwargs)
         return GenKwargs
 
     def GenChannelsConfigKwargs(self):
@@ -247,7 +246,7 @@ class SampSetParam(pTypes.GroupParameter):
 
         self.Config = Config
         self.GenerateChannelsNames()
-        print(ChanKwargs)
+        return ChanKwargs
 
 ###############################################################################
 
@@ -256,7 +255,7 @@ class DataAcquisitionThread(Qt.QThread):
     NewMuxData = Qt.pyqtSignal()
 
     def __init__(self, ChannelsConfigKW, SampKw, BufferSize, AvgIndex=5):
-
+        print ('TMacqThread, DataAcqThread')
         super(DataAcquisitionThread, self).__init__()
 
         self.DaqInterface = CoreMod.ChannelsConfig(**ChannelsConfigKW)

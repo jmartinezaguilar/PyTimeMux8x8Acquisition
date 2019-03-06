@@ -37,15 +37,15 @@ class MainWindow(Qt.QWidget):
 
         layout = Qt.QVBoxLayout(self)
 
-        self.btnGen = Qt.QPushButton("Start Gen!")
-        layout.addWidget(self.btnGen)
+        self.btnAcq = Qt.QPushButton("Start Acq!")
+        layout.addWidget(self.btnAcq)
 
 #        self.DataGenParams = SampGen.DataGeneratorParameters(name='Data Generator')
 #        self.Parameters = Parameter.create(name='params',
 #                                           type='group',
 #                                           children=(self.DataGenParams,))
 #
-        self.SamplingPar = AcqMod.SampSetParam(name='Acquisition Settings')
+        self.SamplingPar = AcqMod.SampSetParam(name='SampSettingConf')
         self.Parameters = Parameter.create(name='App Parameters',
                                            type='group',
                                            children=(self.SamplingPar,))
@@ -56,7 +56,7 @@ class MainWindow(Qt.QWidget):
 
         self.PlotParams = PltMod.PlotterParameters(name='Plot options')
         self.PlotParams.SetChannels(self.SamplingPar.GenerateChannelsNames())
-        self.PlotParams.param('Fs').setValue(self.SamplingPar.param('Fs').value())
+        self.PlotParams.param('Fs').setValue(self.SamplingPar.Fs.value())
 #        self.PlotParams.param('Fs').setValue(self.DataGenParams.param('Fs').value())
 
         self.Parameters.addChild(self.PlotParams)
@@ -71,7 +71,7 @@ class MainWindow(Qt.QWidget):
 #        self.setGeometry(550, 10, 300, 700)
         self.setWindowTitle('MainWindow')
 
-        self.btnGen.clicked.connect(self.on_btnStart)
+        self.btnAcq.clicked.connect(self.on_btnStart)
         self.threadAcq = None
         self.threadSave = None
         self.threadPlotter = None
@@ -98,10 +98,25 @@ class MainWindow(Qt.QWidget):
         print('  data:      %s' % str(data))
         print('  ----------')
 
-        if childName == 'Data Generator.nChannels':
+        if childName == 'SampSettingConf.Fs':
             self.PlotParams.SetChannels(self.SamplingPar.GenerateChannelsNames())
 
-        if childName == 'Data Generator.Fs':
+#        if childName == 'SampSettingConf.nSampsCo':
+#            self.PlotParams.SetChannels(self.SamplingPar.GenerateChannelsNames())
+#
+#        if childName == 'SampSettingConf.nBlocks':
+#            self.PlotParams.SetChannels(self.SamplingPar.GenerateChannelsNames())
+#        
+#        if childName == 'SampSettingConf.DigColumns':
+#            self.PlotParams.SetChannels(self.SamplingPar.GenerateChannelsNames())
+#
+#        if childName == 'SampSettingConf.Channels Config':
+#            self.PlotParams.SetChannels(self.SamplingPar.GenerateChannelsNames())
+#       
+#        if childName == 'SampSettingConf.Channels':
+#            self.PlotParams.SetChannels(self.SamplingPar.GenerateChannelsNames())
+
+        if childName == 'SampSettingConf.Fs':
             self.PlotParams.param('Fs').setValue(data)
 
         if childName == 'Plot options.RefreshTime':
@@ -113,9 +128,15 @@ class MainWindow(Qt.QWidget):
                 self.threadPlotter.SetViewTime(data)
 
     def on_btnStart(self):
+        print('ButStart')
         if self.threadAcq is None:
             GenKwargs = self.SamplingPar.GenSampKwargs()
-            self.threadAcq = AcqMod.DataAcquisitionThread(**GenKwargs)
+            GenChanKwargs = self.SamplingPar.GenChannelsConfigKwargs()
+            print(GenKwargs, GenChanKwargs)
+            self.threadAcq = AcqMod.DataAcquisitionThread(ChannelsConfigKW=GenChanKwargs,
+                                                          SampKw=GenKwargs,
+                                                          )
+
             self.threadAcq.NewMuxData.connect(self.on_NewSample)
             self.threadAcq.start()
 
@@ -141,7 +162,7 @@ class MainWindow(Qt.QWidget):
 #                                                      ChannelConf=PlotterKwargs['ChannelConf'])
 #            self.threadPSDPlotter.start()            
 #
-            self.btnGen.setText("Stop Gen")
+            self.btnAcq.setText("Stop Gen")
             self.OldTime = time.time()
             self.Tss = []
         else:
@@ -156,9 +177,10 @@ class MainWindow(Qt.QWidget):
             self.threadPlotter.terminate()
             self.threadPlotter = None
 
-            self.btnGen.setText("Start Gen")
+            self.btnAcq.setText("Start Gen")
 
     def on_NewSample(self):
+        print('TNAcqGui on_NewSample')
         ''' Visualization of streaming data-WorkThread. '''
         Ts = time.time() - self.OldTime
         self.Tss.append(Ts)
