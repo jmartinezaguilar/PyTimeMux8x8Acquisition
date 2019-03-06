@@ -266,93 +266,76 @@ class Plotter(Qt.QThread):
 
 ##############################################################################
 
-#PSDPars = ({'name': 'PSD Enable',
-#            'readonly': True,
-#            'type': 'bool',
-#            'siPrefix': True,
-#            'suffix': 'Hz'},
-#           {'name': 'PSD Enable',            
-#            'type': 'bool',
-#            'value': True}
-#           {'name': 'ViewBuffer',
-#            'type': 'float',
-#            'value': 30,
-#            'step': 1,
-#            'siPrefix': True,
-#            'suffix': 's'},
-#           {'name': 'ViewTime',
-#            'type': 'float',
-#            'value': 10,
-#            'step': 1,
-#            'siPrefix': True,
-#            'suffix': 's'},
-#           {'name': 'RefreshTime',
-#            'type': 'float',
-#            'value': 4,
-#            'step': 1,
-#            'siPrefix': True,
-#            'suffix': 's'},
-#           {'name': 'Windows',
-#            'type': 'int',
-#            'value': 1},
-#           {'name': 'Channels',
-#            'type': 'group',
-#            'children': []},)
-#
-#
-#class PSDParameters(pTypes.GroupParameter):
-#    def __init__(self, **kwargs):
-#        pTypes.GroupParameter.__init__(self, **kwargs)
-#
-##        self.QTparent = QTparent
-#        self.addChildren(PlotterPars)
-#        self.param('Windows').sigValueChanged.connect(self.on_WindowsChange)
-#
-#    def on_WindowsChange(self):
-#        print('tyest')
-#        chs = self.param('Channels').children()
-#        chPWind = int(len(chs)/self.param('Windows').value())
-#        for ch in chs:
-#            ind = ch.child('Input').value()
-#            ch.child('Window').setValue(int(ind/chPWind))
-#
-#    def SetChannels(self, Channels):
-#        self.param('Channels').clearChildren()
-#        nChannels = len(Channels)
-#        self.param('nChannels').setValue(nChannels)
-#        chPWind = int(nChannels/self.param('Windows').value())
-#        Chs = []
-#        for chn, ind in Channels.items():
-#            Ch = copy.deepcopy(ChannelPars)
-#            pen = pg.mkPen((ind, 1.3*nChannels))
-#            Ch['name'] = chn
-#            Ch['children'][0]['value'] = chn
-#            Ch['children'][1]['value'] = pen.color()
-#            Ch['children'][3]['value'] = int(ind/chPWind)
-#            Ch['children'][4]['value'] = ind
-#            Chs.append(Ch)
-#
-#        self.param('Channels').addChildren(Chs)
-#
-#    def GetParams(self):
-#        PlotterKwargs = {}
-#        for p in self.children():
-#            if p.name() in ('Channels', 'Windows'):
-#                continue
-#            PlotterKwargs[p.name()] = p.value()
-#
-#        ChannelConf = {}
-#        for i in range(self.param('Windows').value()):
-#            ChannelConf[i] = []
-#
-#        for p in self.param('Channels').children():
-#            chp = {}
-#            for pp in p.children():
-#                chp[pp.name()] = pp.value()
-#            ChannelConf[chp['Window']].append(chp.copy())
-#        PlotterKwargs['ChannelConf'] = ChannelConf
-#        return PlotterKwargs
-#
+PSDPars = ({'name': 'Fs',
+            'readonly': True,
+            'type': 'float',
+            'siPrefix': True,
+            'suffix': 'Hz'},
+           {'name': 'PSD Enable',
+            'type': 'bool',
+            'value': True},
+           {'name': 'Fmin',
+            'type': 'float',
+            'value': 1,
+            'step': 10,
+            'siPrefix': True,
+            'suffix': 'Hz'},
+           {'name': 'nFFT',
+            'title': 'nFFT 2**x',
+            'type': 'int',
+            'value': 15,
+            'step': 1},
+           {'name': 'Averages',
+            'type': 'int',
+            'value': 4,
+            'step': 1},
+           {'name': 'AcqTime',
+            'readonly': True,
+            'type': 'float',
+            'siPrefix': True,
+            'suffix': 's'},
+            )
+
+
+class PSDParameters(pTypes.GroupParameter):
+    def __init__(self, **kwargs):
+        pTypes.GroupParameter.__init__(self, **kwargs)
+
+#        self.QTparent = QTparent
+        self.addChildren(PSDPars)
+        self.param('Fs').sigValueChanged.connect(self.on_FsChange)
+        self.param('Fmin').sigValueChanged.connect(self.on_FminChange)
+        self.param('nFFT').sigValueChanged.connect(self.on_nFFTChange)
+        self.param('Averages').sigValueChanged.connect(self.on_AveragesChange)
+
+    def on_FsChange(self):
+        print('tyest')
+        chs = self.param('Channels').children()
+        chPWind = int(len(chs)/self.param('Windows').value())
+        for ch in chs:
+            ind = ch.child('Input').value()
+            ch.child('Window').setValue(int(ind/chPWind))
+
+
+    def GetParams(self):
+        PlotterKwargs = {}
+        for p in self.children():
+            if p.name() in ('Channels', 'Windows'):
+                continue
+            PlotterKwargs[p.name()] = p.value()
+
+        ChannelConf = {}
+        for i in range(self.param('Windows').value()):
+            ChannelConf[i] = []
+
+        for p in self.param('Channels').children():
+            chp = {}
+            for pp in p.children():
+                chp[pp.name()] = pp.value()
+            ChannelConf[chp['Window']].append(chp.copy())
+        PlotterKwargs['ChannelConf'] = ChannelConf
+        return PlotterKwargs
+
 
 
 

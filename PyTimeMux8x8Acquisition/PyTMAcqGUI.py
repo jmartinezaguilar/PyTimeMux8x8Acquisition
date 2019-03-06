@@ -71,7 +71,7 @@ class MainWindow(Qt.QWidget):
 #        self.setGeometry(550, 10, 300, 700)
         self.setWindowTitle('MainWindow')
 
-        self.btnGen.clicked.connect(self.on_btnGen)
+        self.btnGen.clicked.connect(self.on_btnStart)
         self.threadAcq = None
         self.threadSave = None
         self.threadPlotter = None
@@ -112,11 +112,11 @@ class MainWindow(Qt.QWidget):
             if self.threadPlotter is not None:
                 self.threadPlotter.SetViewTime(data)
 
-    def on_btnGen(self):
+    def on_btnStart(self):
         if self.threadAcq is None:
             GenKwargs = self.SamplingPar.GenSampKwargs()
             self.threadAcq = AcqMod.DataAcquisitionThread(**GenKwargs)
-            self.threadAcq.NewSample.connect(self.on_NewSample)
+            self.threadAcq.NewMuxData.connect(self.on_NewSample)
             self.threadAcq.start()
 
             FileName = self.FileParameters.param('File Path').value()
