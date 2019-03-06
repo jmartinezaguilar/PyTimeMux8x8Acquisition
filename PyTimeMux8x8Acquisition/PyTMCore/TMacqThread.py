@@ -8,6 +8,9 @@ Created on Wed Mar  6 12:25:45 2019
 
 from PyQt5 import Qt
 import pyqtgraph.parametertree.parameterTypes as pTypes
+import numpy as np
+import PyTMCore.TMacqCore as CoreMod
+import PyTMCore.FileModule as FileMod
 
 
 SampSettingConf = ({'name': 'Channels Config',
@@ -147,13 +150,13 @@ SampSettingConf = ({'name': 'Channels Config',
 ###############################################################################
 
 
-class SamplingSettingsParameters(pTypes.GroupParameter):
+class SampSetParam(pTypes.GroupParameter):
 
     Columns = None
     Rows = None
 
     def __init__(self, **kwargs):
-        super(SamplingSettingsParameters, self).__init__(**kwargs)
+        super(SampSetParam, self).__init__(**kwargs)
         self.addChildren(SampSettingConf)
 
         self.SampSet = self.param('Sampling Settings')
@@ -217,6 +220,7 @@ class SamplingSettingsParameters(pTypes.GroupParameter):
                             ChannelNames[Row + Col + ty.split('Acq')[1]] = Ind
                             Ind += 1
             self.ChannelNames = ChannelNames
+        return self.ChannelNames
 
     def GetConfig(self):
         self.GenChannelsConfigKwargs()
@@ -227,6 +231,7 @@ class SamplingSettingsParameters(pTypes.GroupParameter):
         for p in self.SampSet.children():
             GenKwargs[p.name()] = p.value()
         print(GenKwargs)
+        return GenKwargs
 
     def GenChannelsConfigKwargs(self):
         ChanKwargs = {}
@@ -244,7 +249,6 @@ class SamplingSettingsParameters(pTypes.GroupParameter):
         self.GenerateChannelsNames()
         print(ChanKwargs)
 
-
 ###############################################################################
 
 
@@ -255,13 +259,14 @@ class DataAcquisitionThread(Qt.QThread):
 
         super(DataAcquisitionThread, self).__init__()
 
-        self.DaqInterface = ChannelsConfig(**ChannelsConfigKW)
+        self.DaqInterface = CoreMod.ChannelsConfig(**ChannelsConfigKW)
         self.DaqInterface.DataEveryNEvent = self.NewData
         self.SampKw = SampKw
         self.AvgIndex = AvgIndex
 
-        self.MuxBuffer = Buffer(BufferSize=BufferSize,
-                                nChannels=self.DaqInterface.nChannels)
+#        self.MuxBuffer = Buffer(BufferSize=BufferSize,
+#                                nChannels=self.DaqInterface.nChannels)
+#        self.MuxBuffer = FileMod.FileBuffer()
 
     def run(self, *args, **kwargs):
         self.DaqInterface.StartAcquisition(**self.SampKw)

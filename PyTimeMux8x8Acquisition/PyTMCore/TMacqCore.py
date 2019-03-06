@@ -6,7 +6,7 @@ Created on Tue Mar  5 14:13:45 2019
 @author: aguimera
 """
 
-import PyTimeMux8x8Acquisition.PyTMCore.DaqInterface as DaqInt
+import DaqInterface as DaqInt
 
 
 # Daq card connections mapping 'Chname':(DCout, ACout)

@@ -23,10 +23,10 @@ from itertools import  cycle
 import copy
 from scipy.signal import welch
 
-import PyTimeMux8x8Acquisition.PyTMCore.FileModule as FileMod
+import PyTMCore.FileModule as FileMod
 #import PyTimeMux8x8Acquisition.PyTMCore.SampleGenerator as SampGen
-import PyTimeMux8x8Acquisition.PyTMCore.PlotModule as PltMod
-import PyTimeMux8x8Acquisition.PyTMCore.TMacqThread as AcqMod
+import PyTMCore.PlotModule as PltMod
+import PyTMCore.TMacqThread as AcqMod
 
 
 class MainWindow(Qt.QWidget):
@@ -35,7 +35,7 @@ class MainWindow(Qt.QWidget):
     def __init__(self):
         super(MainWindow, self).__init__()
 
-        layout = Qt.QVBoxLayout(self) 
+        layout = Qt.QVBoxLayout(self)
 
         self.btnGen = Qt.QPushButton("Start Gen!")
         layout.addWidget(self.btnGen)
@@ -45,22 +45,22 @@ class MainWindow(Qt.QWidget):
 #                                           type='group',
 #                                           children=(self.DataGenParams,))
 #
-        self.SamplingSettingPar = AcqMod.SamplingSettingsParameters(name='Acquisition Settings')
+        self.SamplingPar = AcqMod.SampSetParam(name='Acquisition Settings')
         self.Parameters = Parameter.create(name='App Parameters',
                                            type='group',
-                                           children=(self.SamplingSettingPar,))
-
+                                           children=(self.SamplingPar,))
 
         self.FileParameters = FileMod.SaveFileParameters(QTparent=self,
                                                          name='Record File')
         self.Parameters.addChild(self.FileParameters)
-        
+
         self.PlotParams = PltMod.PlotterParameters(name='Plot options')
-        self.PlotParams.SetChannels(self.SamplingSettingPar.GetChannels())
+        self.PlotParams.SetChannels(self.SamplingPar.GenerateChannelsNames())
+        self.PlotParams.param('Fs').setValue(self.SamplingPar.param('Fs').value())
 #        self.PlotParams.param('Fs').setValue(self.DataGenParams.param('Fs').value())
 
         self.Parameters.addChild(self.PlotParams)
-        
+
         self.Parameters.sigTreeStateChanged.connect(self.on_pars_changed)
         self.treepar = ParameterTree()
         self.treepar.setParameters(self.Parameters, showTop=False)
@@ -72,7 +72,7 @@ class MainWindow(Qt.QWidget):
         self.setWindowTitle('MainWindow')
 
         self.btnGen.clicked.connect(self.on_btnGen)
-        self.threadGen = None
+        self.threadAcq = None
         self.threadSave = None
         self.threadPlotter = None
 
@@ -84,7 +84,7 @@ class MainWindow(Qt.QWidget):
 #
 #        self.GenChannelsViewParams(nChannels=self.DataGenConf.NChannels.value(),
 #                                   nWindows=1)
- 
+
     def on_pars_changed(self, param, changes):
         print("tree changes:")
         for param, change, data in changes:
@@ -93,39 +93,39 @@ class MainWindow(Qt.QWidget):
                 childName = '.'.join(path)
             else:
                 childName = param.name()
-        print('  parameter: %s'% childName)
-        print('  change:    %s'% change)
-        print('  data:      %s'% str(data))
+        print('  parameter: %s' % childName)
+        print('  change:    %s' % change)
+        print('  data:      %s' % str(data))
         print('  ----------')
 
         if childName == 'Data Generator.nChannels':
-            self.PlotParams.SetChannels(self.DataGenParams.GetChannels())
+            self.PlotParams.SetChannels(self.SamplingPar.GenerateChannelsNames())
 
         if childName == 'Data Generator.Fs':
             self.PlotParams.param('Fs').setValue(data)
 
         if childName == 'Plot options.RefreshTime':
             if self.threadPlotter is not None:
-                self.threadPlotter.SetRefreshTime(data)    
+                self.threadPlotter.SetRefreshTime(data)
 
         if childName == 'Plot options.ViewTime':
             if self.threadPlotter is not None:
                 self.threadPlotter.SetViewTime(data)
-            
+
     def on_btnGen(self):
-        if self.threadGen is None:
-            GenKwargs = self.DataGenParams.GetParams()
-            self.threadGen = SampGen.DataSamplingThread(**GenKwargs)
-            self.threadGen.NewSample.connect(self.on_NewSample)
-            self.threadGen.start()
+        if self.threadAcq is None:
+            GenKwargs = self.SamplingPar.GenSampKwargs()
+            self.threadAcq = AcqMod.DataAcquisitionThread(**GenKwargs)
+            self.threadAcq.NewSample.connect(self.on_NewSample)
+            self.threadAcq.start()
 
             FileName = self.FileParameters.param('File Path').value()
-            if FileName ==  '':
+            if FileName == '':
                 print('No file')
             else:
                 if os.path.isfile(FileName):
                     print('Remove File')
-                    os.remove(FileName)  
+                    os.remove(FileName)
                 MaxSize = self.FileParameters.param('MaxSize').value()
                 self.threadSave = FileMod.DataSavingThread(FileName=FileName,
                                                            nChannels=GenKwargs['nChannels'],
@@ -145,9 +145,9 @@ class MainWindow(Qt.QWidget):
             self.OldTime = time.time()
             self.Tss = []
         else:
-            self.threadGen.NewSample.disconnect()
-            self.threadGen.terminate()
-            self.threadGen = None
+            self.threadAcq.NewSample.disconnect()
+            self.threadAcq.terminate()
+            self.threadAcq = None
 
             if self.threadSave is not None:
                 self.threadSave.terminate()
@@ -157,7 +157,7 @@ class MainWindow(Qt.QWidget):
             self.threadPlotter = None
 
             self.btnGen.setText("Start Gen")
-            
+
     def on_NewSample(self):
         ''' Visualization of streaming data-WorkThread. '''
         Ts = time.time() - self.OldTime
@@ -172,7 +172,6 @@ class MainWindow(Qt.QWidget):
 
 if __name__ == '__main__':
     app = Qt.QApplication([])
-    mw  = MainWindow()
+    mw = MainWindow()
     mw.show()
-    app.exec_()        
-        
+    app.exec_()
