@@ -285,7 +285,11 @@ PSDPars = ({'name': 'Fs',
             'type': 'int',
             'value': 15,
             'step': 1},
-           {'name': 'Averages',
+           {'name': 'scaling',
+            'type': 'list',
+            'values': ('density', 'spectrum'),
+            'value': 'density'},
+           {'name': 'nAvg',
             'type': 'int',
             'value': 4,
             'step': 1},
@@ -295,6 +299,8 @@ PSDPars = ({'name': 'Fs',
             'siPrefix': True,
             'suffix': 's'},
             )
+
+PSDParsList = ('Fs', 'nFFT', 'nAvg', 'nChannels', 'scaling')
 
 
 class PSDParameters(pTypes.GroupParameter):
@@ -306,57 +312,70 @@ class PSDParameters(pTypes.GroupParameter):
         self.param('Fs').sigValueChanged.connect(self.on_FsChange)
         self.param('Fmin').sigValueChanged.connect(self.on_FminChange)
         self.param('nFFT').sigValueChanged.connect(self.on_nFFTChange)
-        self.param('Averages').sigValueChanged.connect(self.on_AveragesChange)
+        self.param('nAvg').sigValueChanged.connect(self.on_nAvgChange)
 
     def on_FsChange(self):
-        print('tyest')
-        chs = self.param('Channels').children()
-        chPWind = int(len(chs)/self.param('Windows').value())
-        for ch in chs:
-            ind = ch.child('Input').value()
-            ch.child('Window').setValue(int(ind/chPWind))
+        Fs = self.param('Fs').value()
+        FMin = self.param('Fmin').value()
+        nFFT = np.around(np.log2(Fs/FMin))+1
+        self.param('nFFT').setValue(nFFT, blockSignal=self.on_nFFTChange)
+        self.on_nAvgChange()
 
+    def on_FminChange(self):
+        Fs = self.param('Fs').value()
+        FMin = self.param('Fmin').value()
+        nFFT = np.around(np.log2(Fs/FMin))+1
+        self.param('nFFT').setValue(nFFT, blockSignal=self.on_nFFTChange)
+        self.on_nAvgChange()
+
+    def on_nFFTChange(self):
+        Fs = self.param('Fs').value()
+        nFFT = self.param('nFFT').value()
+        FMin = 2**nFFT/Fs
+        self.param('Fmin').setValue(FMin, blockSignal=self.on_FminChange)
+        self.on_nAvgChange()
+
+    def on_nAvgChange(self):
+        Fs = self.param('Fs').value()
+        nFFT = self.param('nFFT').value()
+        nAvg = self.param('nAvg').value()
+        AcqTime = ((2**nFFT)/Fs)*nAvg
+        self.param('AcqTime').setValue(AcqTime)
 
     def GetParams(self):
-        PlotterKwargs = {}
+        PSDKwargs = {}
         for p in self.children():
-            if p.name() in ('Channels', 'Windows'):
+            if p.name() not in PSDParsList:
                 continue
-            PlotterKwargs[p.name()] = p.value()
-
-        ChannelConf = {}
-        for i in range(self.param('Windows').value()):
-            ChannelConf[i] = []
-
-        for p in self.param('Channels').children():
-            chp = {}
-            for pp in p.children():
-                chp[pp.name()] = pp.value()
-            ChannelConf[chp['Window']].append(chp.copy())
-        PlotterKwargs['ChannelConf'] = ChannelConf
-        return PlotterKwargs
-
-
+            PSDKwargs[p.name()] = p.value()
+        return PSDKwargs
 
 
 class PSDPlotter(Qt.QThread):
-    def __init__(self, nChannels, ChannelConf):
+    def __init__(self, Fs, nFFT, nAvg, nChannels, scaling, ChannelConf):
         super(PSDPlotter, self).__init__()
-        
-        self.nFFT = 2**15
+
+        self.scaling = scaling
+        self.nFFT = 2**nFFT
         self.nChannels = nChannels
-        self.Fs = 10e3
-        self.BufferSize = self.nFFT * 5
-        self.Buffer = Buffer2D(self.Fs, self.nChannels, self.BufferSize/self.Fs)
+        self.Fs = Fs
+        self.BufferSize = self.nFFT * nAvg
+        self.Buffer = Buffer2D(self.Fs, self.nChannels,
+                               self.BufferSize/self.Fs)
 
         self.Plots = [None]*nChannels
         self.Curves = [None]*nChannels
-        
+
         self.wind = PgPlotWindow()
         self.wind.pgLayout.nextRow()
         p = self.wind.pgLayout.addPlot()
         p.setLogMode(True, True)
         p.setLabel('bottom', 'Frequency', units='Hz', **labelStyle)
+        if scaling == 'density':
+            p.setLabel('left', ' PSD', units=' V**2/Hz', **labelStyle)
+        else:
+            p.setLabel('left', ' PSD', units=' V**2', **labelStyle)
+
         for win, chs in ChannelConf.items():
             for ch in chs:
                 c = p.plot(pen=pg.mkPen(ch['color'],
@@ -370,6 +389,7 @@ class PSDPlotter(Qt.QThread):
                 ff, psd = welch(self.Buffer,
                                 fs=self.Fs,
                                 nperseg=self.nFFT,
+                                scaling=self.scaling,
                                 axis=0)
                 self.Buffer.Reset()
                 for i in range(self.nChannels):

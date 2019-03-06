@@ -46,6 +46,10 @@ class MainWindow(Qt.QWidget):
         self.FileParameters = FileMod.SaveFileParameters(QTparent=self,
                                                          name='Record File')
         self.Parameters.addChild(self.FileParameters)
+
+        self.PSDParams = PltMod.PSDParameters(name='PSD Options')
+        self.PSDParams.param('Fs').setValue(self.DataGenParams.param('Fs').value())
+        self.Parameters.addChild(self.PSDParams)
         
         self.PlotParams = PltMod.PlotterParameters(name='Plot options')
         self.PlotParams.SetChannels(self.DataGenParams.GetChannels())
@@ -95,6 +99,7 @@ class MainWindow(Qt.QWidget):
 
         if childName == 'Data Generator.Fs':
             self.PlotParams.param('Fs').setValue(data)
+            self.PSDParams.param('Fs').setValue(data)
 
         if childName == 'Plot options.RefreshTime':
             if self.threadPlotter is not None:
@@ -128,9 +133,10 @@ class MainWindow(Qt.QWidget):
             print(PlotterKwargs)
             self.threadPlotter = PltMod.Plotter(**PlotterKwargs)
             self.threadPlotter.start()
-
-            self.threadPSDPlotter = PltMod.PSDPlotter(nChannels=GenKwargs['nChannels'],
-                                                      ChannelConf=PlotterKwargs['ChannelConf'])
+            
+            self.threadPSDPlotter = PltMod.PSDPlotter(ChannelConf=PlotterKwargs['ChannelConf'],
+                                                      nChannels=GenKwargs['nChannels'],
+                                                      **self.PSDParams.GetParams())
             self.threadPSDPlotter.start()            
 
             self.btnGen.setText("Stop Gen")
