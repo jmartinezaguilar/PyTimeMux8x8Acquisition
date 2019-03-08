@@ -9,16 +9,17 @@ Created on Wed Mar  6 12:25:45 2019
 from PyQt5 import Qt
 import pyqtgraph.parametertree.parameterTypes as pTypes
 import numpy as np
-import PyTMCore.TMacqCore as CoreMod
-import PyTMCore.FileModule as FileMod
+import TMacqCore as CoreMod
+import FileModule as FileMod
 
 
-SampSettingConf = ({'name': 'Channels Config',
+SampSettingConf = ({'title': 'Channels Config',
+                    'name': 'ChsConfig',
                     'type': 'group',
                     'children': ({'title': 'Acquire DC',
                                   'name': 'AcqDC',
                                   'type': 'bool',
-                                  'value': True},
+                                  'value': False},
                                  {'title': 'Acquire AC',
                                   'name': 'AcqAC',
                                   'type': 'bool',
@@ -29,23 +30,23 @@ SampSettingConf = ({'name': 'Channels Config',
                                   'children': ({'name': 'Ch05',
                                                 'tip': 'Ch05',
                                                 'type': 'bool',
-                                                'value': True},
+                                                'value': False},
                                                {'name': 'Ch06',
                                                 'tip': 'Ch06',
                                                 'type': 'bool',
-                                                'value': True},
+                                                'value': False},
                                                {'name': 'Ch07',
                                                 'tip': 'Ch07',
                                                 'type': 'bool',
-                                                'value': True},
+                                                'value': False},
                                                {'name': 'Ch08',
                                                 'tip': 'Ch08',
                                                 'type': 'bool',
-                                                'value': True},
+                                                'value': False},
                                                {'name': 'Ch13',
                                                 'tip': 'Ch13',
                                                 'type': 'bool',
-                                                'value': True},
+                                                'value': False},
                                                {'name': 'Ch14',
                                                 'tip': 'Ch14',
                                                 'type': 'bool',
@@ -65,23 +66,23 @@ SampSettingConf = ({'name': 'Channels Config',
                                   'children': ({'name': 'Col1',
                                                 'tip': 'Col1',
                                                 'type': 'bool',
-                                                'value': True},
+                                                'value': False},
                                                {'name': 'Col2',
                                                 'tip': 'Col2',
                                                 'type': 'bool',
-                                                'value': True},
+                                                'value': False},
                                                {'name': 'Col3',
                                                 'tip': 'Col3',
                                                 'type': 'bool',
-                                                'value': True},
+                                                'value': False},
                                                {'name': 'Col4',
                                                 'tip': 'Col4',
                                                 'type': 'bool',
-                                                'value': True},
+                                                'value': False},
                                                {'name': 'Col5',
                                                 'tip': 'Col5',
                                                 'type': 'bool',
-                                                'value': True},
+                                                'value': False},
                                                {'name': 'Col6',
                                                 'tip': 'Col6',
                                                 'type': 'bool',
@@ -101,7 +102,7 @@ SampSettingConf = ({'name': 'Channels Config',
                     'children': ({'title': 'Sampling Frequency',
                                   'name': 'Fs',
                                   'type': 'float',
-                                  'value': 1e4,
+                                  'value': 100e3,
                                   'step': 100,
                                   'siPrefix': True,
                                   'suffix': 'Hz'},
@@ -114,7 +115,7 @@ SampSettingConf = ({'name': 'Channels Config',
                                  {'title': 'Acquired Blocks',
                                   'name': 'nBlocks',
                                   'type': 'int',
-                                  'value': 1000,
+                                  'value': 3000,
                                   'step': 10,
                                   'limits': (10, 10000)},
                                  {'title': 'Interrup Time',
@@ -151,90 +152,100 @@ SampSettingConf = ({'name': 'Channels Config',
 
 
 class SampSetParam(pTypes.GroupParameter):
+    NewConf = Qt.pyqtSignal()
 
-    Columns = None
-    Rows = None
-
+    Columns = []
+    Rows = []
+    Acq = {}
+    
     def __init__(self, **kwargs):
         super(SampSetParam, self).__init__(**kwargs)
         self.addChildren(SampSettingConf)
 
         self.SampSet = self.param('Sampling Settings')
         self.Fs = self.SampSet.param('Fs')
+        self.FsxCh = self.SampSet.param('FsxCh')
         self.SampsCo = self.SampSet.param('nSampsCo')
         self.nBlocks = self.SampSet.param('nBlocks')
 
-        self.ChsConfig = self.param('Channels Config')
+        self.ChsConfig = self.param('ChsConfig')
         self.RowChannels = self.ChsConfig.param('Channels')
         self.ColChannels = self.ChsConfig.param('DigColumns')
 
         # Init Settings
+        self.on_Acq_Changed()
         self.on_Row_Changed()
-        self.on_Col_Changed()
-        self.GetConfig()
-        self.GenSampKwargs()
+        self.on_Col_Changed()        
+        self.on_Fs_Changed()
 
+        print(self.children())
         # Signals
         self.RowChannels.sigTreeStateChanged.connect(self.on_Row_Changed)
         self.ColChannels.sigTreeStateChanged.connect(self.on_Col_Changed)
-        self.ChsConfig.sigTreeStateChanged.connect(self.GetConfig)
+        self.ChsConfig.param('AcqAC').sigValueChanged.connect(self.on_Acq_Changed)
+        self.ChsConfig.param('AcqDC').sigValueChanged.connect(self.on_Acq_Changed)
         self.Fs.sigValueChanged.connect(self.on_Fs_Changed)
         self.SampsCo.sigValueChanged.connect(self.on_Fs_Changed)
         self.nBlocks.sigValueChanged.connect(self.on_Fs_Changed)
 
+#        self.ChsConfig.sigTreeStateChanged.connect(self.GetConfig)
+
+    def on_Acq_Changed(self):
+        for p in self.ChsConfig.children():
+            if p.name() is 'AcqAC':
+                self.Acq[p.name()] = p.value()
+            if p.name() is 'AcqDC':
+                self.Acq[p.name()] = p.value()
+        self.NewConf.emit()
+
     def on_Fs_Changed(self):
         Ts = 1/self.Fs.value()
         FsxCh = 1/(Ts*self.SampsCo.value()*len(self.Columns))
-        if self.Config['AcqDC'] and self.Config['AcqAC'] is True:
+        if self.Acq['AcqDC'] and self.Acq['AcqAC'] is True:
             FsxCh = FsxCh * 0.5
         IntTime = (1/(FsxCh)*self.nBlocks.value())
         self.SampSet.param('FsxCh').setValue(FsxCh)
         self.SampSet.param('Inttime').setValue(IntTime)
-        self.GenSampKwargs()
 
     def on_Row_Changed(self):
-        Rows = []
+        self.Rows = []
         for p in self.RowChannels.children():
             if p.value() is True:
-                Rows.append(p.name())
-        self.Rows = Rows
-        self.GenChannelsConfigKwargs()
+                self.Rows.append(p.name())
+        self.NewConf.emit()
 
     def on_Col_Changed(self):
-        Columns = []
+        self.Columns = []
         for p in self.ColChannels.children():
             if p.value() is True:
-                Columns.append(p.name())
-        self.Columns = Columns
-        self.GenChannelsConfigKwargs()
+                self.Columns.append(p.name())
         self.on_Fs_Changed()
+        self.NewConf.emit()
 
-    def GenerateChannelsNames(self):
-        if self.Columns:
-            Ind = 0
-            ChannelNames = {}
-            for ty in self.Config:
-                for Row in self.Rows:
-                    for Col in self.Columns:
-                        if self.Config[ty] is True:
-                            ChannelNames[Row + Col + ty.split('Acq')[1]] = Ind
-                            Ind += 1
-            self.ChannelNames = ChannelNames
-            return ChannelNames
+    def GetChannelsNames(self):
+        Ind = 0
+        ChannelNames = {}
+        acqTys = []
+        for tyn, tyv in self.Acq.items():
+            if tyv:
+                acqTys.append(tyn)
 
-    def GetConfig(self):
-        self.GenChannelsConfigKwargs()
-        self.on_Fs_Changed()
+        for acqTy in acqTys:
+            for Row in self.Rows:
+                for Col in self.Columns:
+                    ChannelNames[Row + Col + acqTy] = Ind
+                    Ind += 1
 
-    def GenSampKwargs(self):
+        return ChannelNames
+
+    def GetSampKwargs(self):
         GenKwargs = {}
         for p in self.SampSet.children():
             GenKwargs[p.name()] = p.value()
         return GenKwargs
 
-    def GenChannelsConfigKwargs(self):
+    def GetChannelsConfigKwargs(self):
         ChanKwargs = {}
-        Config = {}
         for p in self.ChsConfig.children():
             if p.name() is 'Channels':
                 ChanKwargs[p.name()] = self.Rows
@@ -242,10 +253,7 @@ class SampSetParam(pTypes.GroupParameter):
                 ChanKwargs[p.name()] = self.Columns
             else:
                 ChanKwargs[p.name()] = p.value()
-                Config[p.name()] = p.value()
 
-        self.Config = Config
-        self.GenerateChannelsNames()
         return ChanKwargs
 
 ###############################################################################
@@ -254,22 +262,17 @@ class SampSetParam(pTypes.GroupParameter):
 class DataAcquisitionThread(Qt.QThread):
     NewMuxData = Qt.pyqtSignal()
 
-    def __init__(self, ChannelsConfigKW, SampKw, BufferSize, AvgIndex=5):
-        print ('TMacqThread, DataAcqThread')
+    def __init__(self, ChannelsConfigKW, SampKw, AvgIndex=5):
         super(DataAcquisitionThread, self).__init__()
-
         self.DaqInterface = CoreMod.ChannelsConfig(**ChannelsConfigKW)
         self.DaqInterface.DataEveryNEvent = self.NewData
         self.SampKw = SampKw
         self.AvgIndex = AvgIndex
 
-#        self.MuxBuffer = Buffer(BufferSize=BufferSize,
-#                                nChannels=self.DaqInterface.nChannels)
-#        self.MuxBuffer = FileMod.FileBuffer()
-
     def run(self, *args, **kwargs):
-        self.DaqInterface.StartAcquisition(**self.SampKw)
         print('Run')
+        print(self.SampKw)
+        self.DaqInterface.StartAcquisition(**self.SampKw)
         loop = Qt.QEventLoop()
         loop.exec_()
 
@@ -281,4 +284,5 @@ class DataAcquisitionThread(Qt.QThread):
 
     def NewData(self, aiData, MuxData):
         self.OutData = self.CalcAverage(MuxData)
+        self.aiData = aiData
         self.NewMuxData.emit()

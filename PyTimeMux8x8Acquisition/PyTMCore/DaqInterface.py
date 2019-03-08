@@ -7,6 +7,10 @@ Created on Tue Mar  5 14:12:43 2019
 """
 
 import PyDAQmx as Daq
+import sys
+import ctypes
+from ctypes import byref, c_int32
+import numpy as np
 
 
 def GetDevName():
@@ -99,7 +103,6 @@ class WriteAnalog(Daq.Task):
     Class to write data to Daq card
     '''
     def __init__(self, Channels):
-
         Daq.Task.__init__(self)
         Dev = GetDevName()
         for Ch in Channels:
@@ -167,7 +170,5 @@ class WriteDigital(Daq.Task):
         print('End SetSingal', read)
 
 ##############################################################################
-        
-        
-        
+
 

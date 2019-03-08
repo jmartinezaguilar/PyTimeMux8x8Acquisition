@@ -50,25 +50,40 @@ class MainWindow(Qt.QWidget):
                                            type='group',
                                            children=(self.SamplingPar,))
 
+        self.SamplingPar.NewConf.connect(self.on_NewConf)
+        
+        
         self.FileParameters = FileMod.SaveFileParameters(QTparent=self,
                                                          name='Record File')
         self.Parameters.addChild(self.FileParameters)
 
         self.PlotParams = PltMod.PlotterParameters(name='Plot options')
-        self.PlotParams.SetChannels(self.SamplingPar.GenerateChannelsNames())
-        self.PlotParams.param('Fs').setValue(self.SamplingPar.Fs.value())
-#        self.PlotParams.param('Fs').setValue(self.DataGenParams.param('Fs').value())
+        self.PlotParams.SetChannels(self.SamplingPar.GetChannelsNames())
+        self.PlotParams.param('Fs').setValue(self.SamplingPar.FsxCh.value())
 
         self.Parameters.addChild(self.PlotParams)
 
+        self.RawPlotParams = PltMod.PlotterParameters(name='Raw Plot')
+        ch={}
+        for i, r in enumerate(sorted(self.SamplingPar.Rows)):
+            ch[r] = i
+        self.RawPlotParams.SetChannels(ch)
+        self.RawPlotParams.param('Fs').setValue(self.SamplingPar.Fs.value())
+
+        self.Parameters.addChild(self.RawPlotParams)
+
+        self.PSDParams = PltMod.PSDParameters(name='PSD Options')
+        self.PSDParams.param('Fs').setValue(self.SamplingPar.FsxCh.value())
+        self.Parameters.addChild(self.PSDParams)
         self.Parameters.sigTreeStateChanged.connect(self.on_pars_changed)
+        
         self.treepar = ParameterTree()
         self.treepar.setParameters(self.Parameters, showTop=False)
         self.treepar.setWindowTitle('pyqtgraph example: Parameter Tree')
 
         layout.addWidget(self.treepar)
 
-#        self.setGeometry(550, 10, 300, 700)
+        self.setGeometry(650, 20, 400, 800)
         self.setWindowTitle('MainWindow')
 
         self.btnAcq.clicked.connect(self.on_btnStart)
@@ -97,28 +112,14 @@ class MainWindow(Qt.QWidget):
         print('  change:    %s' % change)
         print('  data:      %s' % str(data))
         print('  ----------')
-
-        if childName == 'SampSettingConf.Fs':
-            self.PlotParams.SetChannels(self.SamplingPar.GenerateChannelsNames())
-
-#        if childName == 'SampSettingConf.nSampsCo':
-#            self.PlotParams.SetChannels(self.SamplingPar.GenerateChannelsNames())
-#
-#        if childName == 'SampSettingConf.nBlocks':
-#            self.PlotParams.SetChannels(self.SamplingPar.GenerateChannelsNames())
-#        
-#        if childName == 'SampSettingConf.DigColumns':
-#            self.PlotParams.SetChannels(self.SamplingPar.GenerateChannelsNames())
-#
-#        if childName == 'SampSettingConf.Channels Config':
-#            self.PlotParams.SetChannels(self.SamplingPar.GenerateChannelsNames())
-#       
-#        if childName == 'SampSettingConf.Channels':
-#            self.PlotParams.SetChannels(self.SamplingPar.GenerateChannelsNames())
-
-        if childName == 'SampSettingConf.Fs':
+          
+        if childName == 'SampSettingConf.Sampling Settings.FsxCh':
             self.PlotParams.param('Fs').setValue(data)
+            self.PSDParams.param('Fs').setValue(data)
 
+        if childName == 'SampSettingConf.Sampling Settings.Fs':
+            self.RawPlotParams.param('Fs').setValue(data)            
+            
         if childName == 'Plot options.RefreshTime':
             if self.threadPlotter is not None:
                 self.threadPlotter.SetRefreshTime(data)
@@ -127,12 +128,26 @@ class MainWindow(Qt.QWidget):
             if self.threadPlotter is not None:
                 self.threadPlotter.SetViewTime(data)
 
+        if childName == 'Raw Plot.ViewTime':
+            if self.threadPlotterRaw is not None:
+                self.threadPlotterRaw.SetViewTime(data)
+        
+        if childName == 'Raw Plot.RefreshTime':
+            if self.threadPlotterRaw is not None:
+                self.threadPlotterRaw.SetRefreshTime(data)
+                
+    def on_NewConf(self):
+        self.Parameters.sigTreeStateChanged.disconnect()
+        self.PlotParams.SetChannels(self.SamplingPar.GetChannelsNames())
+        self.Parameters.sigTreeStateChanged.connect(self.on_pars_changed)
+       
+
     def on_btnStart(self):
         print('ButStart')
         if self.threadAcq is None:
-            GenKwargs = self.SamplingPar.GenSampKwargs()
-            GenChanKwargs = self.SamplingPar.GenChannelsConfigKwargs()
-            print(GenKwargs, GenChanKwargs)
+            GenKwargs = self.SamplingPar.GetSampKwargs()
+            GenChanKwargs = self.SamplingPar.GetChannelsConfigKwargs()
+            print(GenChanKwargs, GenKwargs)
             self.threadAcq = AcqMod.DataAcquisitionThread(ChannelsConfigKW=GenChanKwargs,
                                                           SampKw=GenKwargs,
                                                           )
@@ -140,28 +155,34 @@ class MainWindow(Qt.QWidget):
             self.threadAcq.NewMuxData.connect(self.on_NewSample)
             self.threadAcq.start()
 
-            FileName = self.FileParameters.param('File Path').value()
-            if FileName == '':
-                print('No file')
-            else:
-                if os.path.isfile(FileName):
-                    print('Remove File')
-                    os.remove(FileName)
-                MaxSize = self.FileParameters.param('MaxSize').value()
-                self.threadSave = FileMod.DataSavingThread(FileName=FileName,
-                                                           nChannels=GenKwargs['nChannels'],
-                                                           MaxSize=MaxSize)
-                self.threadSave.start()
+#            FileName = self.FileParameters.param('File Path').value()
+#            if FileName == '':
+#                print('No file')
+#            else:
+#                if os.path.isfile(FileName):
+#                    print('Remove File')
+#                    os.remove(FileName)
+#                MaxSize = self.FileParameters.param('MaxSize').value()
+#                self.threadSave = FileMod.DataSavingThread(FileName=FileName,
+#                                                           nChannels=GenKwargs['nChannels'],
+#                                                           MaxSize=MaxSize)
+#                self.threadSave.start()
 
             PlotterKwargs = self.PlotParams.GetParams()
             print(PlotterKwargs)
             self.threadPlotter = PltMod.Plotter(**PlotterKwargs)
             self.threadPlotter.start()
 
-#            self.threadPSDPlotter = PltMod.PSDPlotter(nChannels=GenKwargs['nChannels'],
-#                                                      ChannelConf=PlotterKwargs['ChannelConf'])
-#            self.threadPSDPlotter.start()            
-#
+            RawPlotterKwargs = self.RawPlotParams.GetParams()
+#            print(PlotterKwargs)
+            self.threadPlotterRaw = PltMod.Plotter(ShowTime=False, **RawPlotterKwargs)
+            self.threadPlotterRaw.start()
+
+            self.threadPSDPlotter = PltMod.PSDPlotter(ChannelConf=PlotterKwargs['ChannelConf'],
+                                                      nChannels=PlotterKwargs['nChannels'],
+                                                      **self.PSDParams.GetParams())
+            self.threadPSDPlotter.start()            
+
             self.btnAcq.setText("Stop Gen")
             self.OldTime = time.time()
             self.Tss = []
@@ -185,10 +206,12 @@ class MainWindow(Qt.QWidget):
         Ts = time.time() - self.OldTime
         self.Tss.append(Ts)
         self.OldTime = time.time()
-        if self.threadSave is not None:
-            self.threadSave.AddData(self.threadAcq.OutData)
-        self.threadPlotter.AddData(self.threadAcq.OutData)
-#        self.threadPSDPlotter.AddData(self.threadGen.OutData)
+        print(self.threadAcq.aiData.shape)
+#        if self.threadSave is not None:
+#            self.threadSave.AddData(self.threadAcq.OutData)
+        self.threadPlotter.AddData(self.threadAcq.OutData.transpose())
+        self.threadPlotterRaw.AddData(self.threadAcq.aiData.transpose())
+        self.threadPSDPlotter.AddData(self.threadAcq.OutData.transpose())
         print('Sample time', Ts, np.mean(self.Tss))
 
 

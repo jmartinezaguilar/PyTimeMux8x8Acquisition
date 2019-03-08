@@ -192,7 +192,7 @@ labelStyle = {'color': '#FFF',
 
 class Plotter(Qt.QThread):
     def __init__(self, Fs, nChannels, ViewBuffer, ViewTime, RefreshTime,
-                 ChannelConf):
+                 ChannelConf, ShowTime=True):
         super(Plotter, self).__init__()
 
         self.Winds = []
@@ -200,6 +200,7 @@ class Plotter(Qt.QThread):
         self.Plots = [None]*nChannels
         self.Curves = [None]*nChannels
 
+        self.ShowTime = ShowTime
         self.Fs = Fs
         self.Ts = 1/float(self.Fs)
         self.Buffer = Buffer2D(Fs, nChannels, ViewBuffer)
@@ -236,7 +237,10 @@ class Plotter(Qt.QThread):
                     p.setXLink(xlink)
                 xlink = p
             p.showAxis('bottom')
-            p.setLabel('bottom', 'Time', units='s', **labelStyle)
+            if self.ShowTime:
+                p.setLabel('bottom', 'Time', units='s', **labelStyle)
+            else:
+                p.setLabel('bottom', 'Samps', **labelStyle)
 
     def SetViewTime(self, ViewTime):
         self.ViewTime = ViewTime
@@ -249,10 +253,14 @@ class Plotter(Qt.QThread):
     def run(self, *args, **kwargs):
         while True:
             if self.Buffer.counter > self.RefreshInd:
-                t = self.Buffer.GetTimes(self.ViewInd)
+                if self.ShowTime:
+                    t = self.Buffer.GetTimes(self.ViewInd)
                 self.Buffer.Reset()
                 for i in range(self.nChannels):
-                    self.Curves[i].setData(t, self.Buffer[-self.ViewInd:, i])
+                    if self.ShowTime:
+                        self.Curves[i].setData(t, self.Buffer[-self.ViewInd:, i])
+                    else:
+                        self.Curves[i].setData(self.Buffer[-self.ViewInd:, i])
 #                    self.Curves[i].setData(NewData[:, i])
 #                self.Plots[i].setXRange(self.BufferSize/10,
 #                                        self.BufferSize)
@@ -298,7 +306,7 @@ PSDPars = ({'name': 'Fs',
             'type': 'float',
             'siPrefix': True,
             'suffix': 's'},
-            )
+           )
 
 PSDParsList = ('Fs', 'nFFT', 'nAvg', 'nChannels', 'scaling')
 

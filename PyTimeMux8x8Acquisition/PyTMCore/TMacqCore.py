@@ -6,7 +6,9 @@ Created on Tue Mar  5 14:13:45 2019
 @author: aguimera
 """
 
-import DaqInterface as DaqInt
+import PyTMCore.DaqInterface as DaqInt
+import numpy as np
+
 
 
 # Daq card connections mapping 'Chname':(DCout, ACout)
@@ -57,6 +59,7 @@ class ChannelsConfig():
     DataDoneEvent = None
 
     def _InitAnalogInputs(self):
+        print('InitAnalogInputs')
         self.DCChannelIndex = {}
         self.ACChannelIndex = {}
         InChans = []
@@ -106,6 +109,7 @@ class ChannelsConfig():
         self._InitAnalogOutputs(ChVds=ChVds, ChVs=ChVs)
 
         self.ChNamesList = sorted(Channels)
+        print self.ChNamesList
         self.AcqAC = AcqAC
         self.AcqDC = AcqDC
         self.ACGain = ACGain
@@ -127,7 +131,7 @@ class ChannelsConfig():
         else:
             self.nChannels = len(self.MuxChannelNames)
 
-    def StartAcquisition(self, Fs, nSampsCo, nBlocks, Vgs, Vds):
+    def StartAcquisition(self, Fs, nSampsCo, nBlocks, Vgs, Vds, **kwargs):
         print('StartAcquisition')
         self.SetBias(Vgs=Vgs, Vds=Vds)
         self.SetDigitalOutputs(nSampsCo=nSampsCo)
