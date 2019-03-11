@@ -222,6 +222,15 @@ class ChannelsConfig():
     def DoneEventCallBack(self, Data):
         print('Done callback')
 
+    def Stop(self):
+        print('Stopppp')
+        self.SetBias(Vgs=0, Vds=0)
+        self.AnalogInputs.StopContData()
+        if self.DigitalOutputs is not None:
+            self.DigitalOutputs.ClearTask()
+            self.DigitalOutputs = None
+        
+
 #    def __del__(self):
 #        print('Delete class')
 #        self.Inputs.ClearTask()
