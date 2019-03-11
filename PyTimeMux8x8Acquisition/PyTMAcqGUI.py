@@ -105,6 +105,14 @@ class MainWindow(Qt.QWidget):
         if childName == 'SampSettingConf.Sampling Settings.Fs':
             self.RawPlotParams.param('Fs').setValue(data)
 
+        if childName == 'SampSettingConf.Sampling Settings.Vgs':
+            Vds = self.threadAcq.DaqInterface.Vds
+            self.threadAcq.DaqInterface.SetBias(Vgs=data, Vds=Vds)
+
+        if childName == 'SampSettingConf.Sampling Settings.Vds':
+            Vgs = self.threadAcq.DaqInterface.Vgs
+            self.threadAcq.DaqInterface.SetBias(Vgs=Vgs, Vds=data)
+
         if childName == 'Plot options.RefreshTime':
             if self.threadPlotter is not None:
                 self.threadPlotter.SetRefreshTime(data)
@@ -152,11 +160,10 @@ class MainWindow(Qt.QWidget):
                     os.remove(FileName)
                 MaxSize = self.FileParameters.param('MaxSize').value()
 #                MaxSize = self.Parameters.param('MaxSize').value()
-                print('ploterkwargs', PlotterKwargs['nChannels'])
                 self.threadSave = FileMod.DataSavingThread(FileName=FileName,
                                                            nChannels=PlotterKwargs['nChannels'],
                                                            MaxSize=MaxSize)
-                self.threadSave.run()
+                self.threadSave.start()
             print(PlotterKwargs)
             self.threadPlotter = PltMod.Plotter(**PlotterKwargs)
             self.threadPlotter.start()
