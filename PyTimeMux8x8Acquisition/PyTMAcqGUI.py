@@ -156,7 +156,7 @@ class MainWindow(Qt.QWidget):
                 self.threadSave = FileMod.DataSavingThread(FileName=FileName,
                                                            nChannels=PlotterKwargs['nChannels'],
                                                            MaxSize=MaxSize)
-                self.threadSave.start()
+                self.threadSave.run()
             print(PlotterKwargs)
             self.threadPlotter = PltMod.Plotter(**PlotterKwargs)
             self.threadPlotter.start()
