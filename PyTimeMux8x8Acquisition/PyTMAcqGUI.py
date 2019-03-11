@@ -132,6 +132,10 @@ class MainWindow(Qt.QWidget):
     def on_NewConf(self):
         self.Parameters.sigTreeStateChanged.disconnect()
         self.PlotParams.SetChannels(self.SamplingPar.GetChannelsNames())
+        ch = {}
+        for i, r in enumerate(sorted(self.SamplingPar.Rows)):
+            ch[r] = i
+        self.RawPlotParams.SetChannels(ch)
         self.Parameters.sigTreeStateChanged.connect(self.on_pars_changed)
 
     def on_btnStart(self):
