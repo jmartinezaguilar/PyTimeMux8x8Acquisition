@@ -224,6 +224,27 @@ class SampSetParam(pTypes.GroupParameter):
         self.on_Fs_Changed()
         self.NewConf.emit()
 
+    def GetRowNames(self):
+        Ind = 0
+        RowNames = {}
+        acqTys = []
+        for tyn, tyv in self.Acq.items():
+            if tyv:
+                acqTys.append(tyn)
+                print(acqTys)
+
+        if 'AcqAC' in acqTys:
+            for Row in self.Rows:
+                RowNames[Row + 'AC'] = Ind
+                Ind += 1
+
+        if 'AcqDC' in acqTys:
+            for Row in self.Rows:
+                RowNames[Row + 'DC'] = Ind
+                Ind += 1
+        print(RowNames)
+        return RowNames
+
     def GetChannelsNames(self):
         Ind = 0
         ChannelNames = {}

@@ -45,10 +45,10 @@ class MainWindow(Qt.QWidget):
         self.Parameters.addChild(self.PlotParams)
 
         self.RawPlotParams = PltMod.PlotterParameters(name='Raw Plot')
-        ch = {}
-        for i, r in enumerate(sorted(self.SamplingPar.Rows)):
-            ch[r] = i
-        self.RawPlotParams.SetChannels(ch)
+#        ch = {}
+#        for i, r in enumerate(sorted(self.SamplingPar.Rows)):
+#            ch[r] = i
+        self.RawPlotParams.SetChannels(self.SamplingPar.GetRowNames())
         self.RawPlotParams.param('Fs').setValue(self.SamplingPar.Fs.value())
 
         self.Parameters.addChild(self.RawPlotParams)
@@ -132,10 +132,10 @@ class MainWindow(Qt.QWidget):
     def on_NewConf(self):
         self.Parameters.sigTreeStateChanged.disconnect()
         self.PlotParams.SetChannels(self.SamplingPar.GetChannelsNames())
-        ch = {}
-        for i, r in enumerate(sorted(self.SamplingPar.Rows)):
-            ch[r] = i
-        self.RawPlotParams.SetChannels(ch)
+#        ch = {}
+#        for i, r in enumerate(sorted(self.SamplingPar.Rows)):
+#            ch[r] = i
+        self.RawPlotParams.SetChannels(self.SamplingPar.GetRowNames())
         self.Parameters.sigTreeStateChanged.connect(self.on_pars_changed)
 
     def on_btnStart(self):
