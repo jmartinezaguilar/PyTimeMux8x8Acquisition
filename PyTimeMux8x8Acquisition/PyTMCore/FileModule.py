@@ -11,6 +11,7 @@ from PyQt5.QtWidgets import QFileDialog
 import h5py
 from PyQt5 import Qt
 import os
+import pickle
 
 
 SaveFilePars = [{'name': 'Save File',
@@ -124,8 +125,8 @@ class SaveSateParameters(pTypes.GroupParameter):
 
     def _GetParent(self):
         parent = self.parent()
-        while parent is None:
-            parent = self.parent()
+#        while parent is None:
+#            parent = self.parent()
         return parent
 
     def on_Load(self):

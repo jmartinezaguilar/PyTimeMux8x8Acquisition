@@ -76,6 +76,10 @@ class MainWindow(Qt.QWidget):
                                                          name='Record File')
         self.Parameters.addChild(self.FileParameters)
 
+        self.ConfigParameters = FileMod.SaveSateParameters(QTparent=self,
+                                                           name='Configuration File')
+        self.Parameters.addChild(self.ConfigParameters)
+
 #        self.FileParams = Parameter.create(name='File Params',
 #                                           type='group',
 #                                           children=self.FileParameters)
