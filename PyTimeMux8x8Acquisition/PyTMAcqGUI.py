@@ -45,9 +45,6 @@ class MainWindow(Qt.QWidget):
         self.Parameters.addChild(self.PlotParams)
 
         self.RawPlotParams = PltMod.PlotterParameters(name='Raw Plot')
-#        ch = {}
-#        for i, r in enumerate(sorted(self.SamplingPar.Rows)):
-#            ch[r] = i
         self.RawPlotParams.SetChannels(self.SamplingPar.GetRowNames())
         self.RawPlotParams.param('Fs').setValue(self.SamplingPar.Fs.value())
 
@@ -143,14 +140,13 @@ class MainWindow(Qt.QWidget):
         self.Parameters.sigTreeStateChanged.connect(self.on_pars_changed)
 
     def on_btnStart(self):
-        print('ButStart')
         if self.threadAcq is None:
             GenKwargs = self.SamplingPar.GetSampKwargs()
             GenChanKwargs = self.SamplingPar.GetChannelsConfigKwargs()
-            print(GenChanKwargs, GenKwargs)
+            AvgIndex = self.SamplingPar.SampSet.param('nAvg').value()
             self.threadAcq = AcqMod.DataAcquisitionThread(ChannelsConfigKW=GenChanKwargs,
                                                           SampKw=GenKwargs,
-                                                          )
+                                                          AvgIndex=AvgIndex)
 
             self.threadAcq.NewMuxData.connect(self.on_NewSample)
             self.threadAcq.start()
@@ -172,7 +168,6 @@ class MainWindow(Qt.QWidget):
                                                            nChannels=PlotterKwargs['nChannels'],
                                                            MaxSize=MaxSize)
                 self.threadSave.start()
-            print(PlotterKwargs)
             self.threadPlotter = PltMod.Plotter(**PlotterKwargs)
             self.threadPlotter.start()
 
@@ -204,7 +199,6 @@ class MainWindow(Qt.QWidget):
             self.btnAcq.setText("Start Gen")
 
     def on_NewSample(self):
-        print('TNAcqGui on_NewSample')
         ''' Visualization of streaming data-WorkThread. '''
         Ts = time.time() - self.OldTime
         self.Tss.append(Ts)

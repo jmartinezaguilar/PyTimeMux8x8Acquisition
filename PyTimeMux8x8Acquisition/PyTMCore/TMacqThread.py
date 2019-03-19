@@ -118,6 +118,12 @@ SampSettingConf = ({'title': 'Channels Config',
                                   'value': 3000,
                                   'step': 10,
                                   'limits': (10, 10000)},
+                                 {'title': 'Averaging',
+                                  'name': 'nAvg',
+                                  'type': 'int',
+                                  'value': 5,
+                                  'step': 1,
+                                  'limits': (1, 10)},
                                  {'title': 'Interrup Time',
                                   'name': 'Inttime',
                                   'type': 'float',
@@ -231,7 +237,6 @@ class SampSetParam(pTypes.GroupParameter):
         for tyn, tyv in self.Acq.items():
             if tyv:
                 acqTys.append(tyn)
-                print(acqTys)
 
         if 'AcqAC' in acqTys:
             for Row in self.Rows:
@@ -242,7 +247,6 @@ class SampSetParam(pTypes.GroupParameter):
             for Row in self.Rows:
                 RowNames[Row + 'DC'] = Ind
                 Ind += 1
-        print(RowNames)
         return RowNames
 
     def GetChannelsNames(self):
@@ -293,15 +297,11 @@ class DataAcquisitionThread(Qt.QThread):
         self.AvgIndex = AvgIndex
 
     def run(self, *args, **kwargs):
-        print('Run')
-        print(self.SampKw)
         self.DaqInterface.StartAcquisition(**self.SampKw)
         loop = Qt.QEventLoop()
         loop.exec_()
 
     def CalcAverage(self, MuxData):
-        print('CalcAverage')
-
 #        Avg = np.mean(LinesSorted[:,-2:,:], axis=1)
         return np.mean(MuxData[:, self.AvgIndex:, :], axis=1)
 
