@@ -209,8 +209,8 @@ class SampSetParam(pTypes.GroupParameter):
     def on_Fs_Changed(self):
         Ts = 1/self.Fs.value()
         FsxCh = 1/(Ts*self.SampsCo.value()*len(self.Columns))
-        if self.Acq['AcqDC'] and self.Acq['AcqAC'] is True:
-            FsxCh = FsxCh * 0.5
+#        if self.Acq['AcqDC'] and self.Acq['AcqAC'] is True:
+#            FsxCh = FsxCh * 0.5
         IntTime = (1/(FsxCh)*self.nBlocks.value())
         self.SampSet.param('FsxCh').setValue(FsxCh)
         self.SampSet.param('Inttime').setValue(IntTime)
