@@ -91,7 +91,8 @@ class PlotterParameters(pTypes.GroupParameter):
         self.param('nChannels').setValue(nChannels)
         chPWind = int(nChannels/self.param('Windows').value())
         Chs = []
-        for chn, ind in Channels.items():
+        for chn in sorted(Channels, key=Channels.get):
+            ind = Channels[chn]
             Ch = copy.deepcopy(ChannelPars)
             pen = pg.mkPen((ind, 1.3*nChannels))
             Ch['name'] = chn
