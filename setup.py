@@ -40,7 +40,7 @@ install_requires = [
                     'PyCont',
                     ]
 
-console_scripts = ['GFETTimeMux8x8Acq = PyTimeMux8x8Acquisition.TimeMuxGui:main',
+console_scripts = ['GFETTimeMux8x8Acq = PyTimeMux8x8Acquisition.PyTMAcqGUI:main',
                   ]
 
 entry_points = {'console_scripts': console_scripts, }
