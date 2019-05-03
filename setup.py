@@ -33,14 +33,11 @@ long_description = """
                    """
 
 install_requires = [
-#                    'numpy',
-#                    'matplotlib',
-#                    'quantities>=0.12',
-#                    'scipy',
-#                    'neo==0.6.1',
-#                    'nixio',
-#                    'deepdish',
-#                    'PhyREC'
+                    'numpy',
+                    'matplotlib',
+                    'quantities>=0.12',
+                    'scipy',
+                    'PyCont',
                     ]
 
 console_scripts = ['GFETTimeMux8x8Acq = PyTimeMux8x8Acquisition.TimeMuxGui:main',
