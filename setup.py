@@ -26,24 +26,21 @@ Created on Thu Dec 21 18:30:42 2017
 
 from setuptools import setup, find_packages
 
-_version = '0.0.1'
+_version = '0.0.2'
 
 long_description = """
                    Tools for acquire continuously 8x8 matrix devices                 
                    """
 
 install_requires = [
-#                    'numpy',
-#                    'matplotlib',
-#                    'quantities>=0.12',
-#                    'scipy',
-#                    'neo==0.6.1',
-#                    'nixio',
-#                    'deepdish',
-#                    'PhyREC'
+                    'numpy',
+                    'matplotlib',
+                    'quantities>=0.12',
+                    'scipy',
+                    'PyCont',
                     ]
 
-console_scripts = ['GFETTimeMux8x8Acq = PyTimeMux8x8Acquisition.TimeMuxGui:main',
+console_scripts = ['GFETTimeMux8x8Acq = PyTimeMux8x8Acquisition.PyTMAcqGUI:main',
                   ]
 
 entry_points = {'console_scripts': console_scripts, }

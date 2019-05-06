@@ -21,8 +21,11 @@ import os
 
 from pyqtgraph.parametertree import Parameter, ParameterTree
 
-import PyTMCore.FileModule as FileMod
-import PyTMCore.PlotModule as PltMod
+import PyCont.FileModule as FileMod
+import PyCont.PlotModule as PltMod
+
+#import PyTMCore.FileModule as FileMod
+#import PyTMCore.PlotModule as PltMod
 import PyTMCore.TMacqThread as AcqMod
 
 
