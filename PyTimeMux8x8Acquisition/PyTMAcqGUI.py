@@ -18,7 +18,7 @@ from qtpy import QtWidgets, uic
 import numpy as np
 import time
 import os
-
+import sys
 from pyqtgraph.parametertree import Parameter, ParameterTree
 
 import PyCont.FileModule as FileMod
