@@ -116,12 +116,14 @@ class MainWindow(Qt.QWidget):
             self.RawPlotParams.param('Fs').setValue(data)
 
         if childName == 'SampSettingConf.Sampling Settings.Vgs':
-            Vds = self.threadAcq.DaqInterface.Vds
-            self.threadAcq.DaqInterface.SetBias(Vgs=data, Vds=Vds)
+            if self.threadAcq:
+                Vds = self.threadAcq.DaqInterface.Vds
+                self.threadAcq.DaqInterface.SetBias(Vgs=data, Vds=Vds)
 
         if childName == 'SampSettingConf.Sampling Settings.Vds':
-            Vgs = self.threadAcq.DaqInterface.Vgs
-            self.threadAcq.DaqInterface.SetBias(Vgs=Vgs, Vds=data)
+            if self.threadAcq:
+                Vgs = self.threadAcq.DaqInterface.Vgs
+                self.threadAcq.DaqInterface.SetBias(Vgs=Vgs, Vds=data)
 
         if childName == 'Plot options.RefreshTime':
             if self.threadPlotter is not None:
