@@ -142,13 +142,13 @@ SampSettingConf = ({'title': 'Channels Config',
                                   'siPrefix': True,
                                   'suffix': 'Hz',
                                   'readonly': True},
-                                 {'title': '_Vds',
+                                 {'title': 'Vds',
                                   'name': 'Vds',
                                   'type': 'float',
                                   'value': 0.05,
                                   'step': 0.01,
-                                  'limits': (-0.1, 0.1)},
-                                 {'title': '_Vgs',
+                                  'limits': (0, 0.1)},
+                                 {'title': 'Vgs',
                                   'name': 'Vgs',
                                   'type': 'float',
                                   'value': 0.1,
@@ -176,7 +176,6 @@ class SampSetParam(pTypes.GroupParameter):
         self.FsxCh = self.SampSet.param('FsxCh')
         self.SampsCo = self.SampSet.param('nSampsCo')
         self.nBlocks = self.SampSet.param('nBlocks')
-        self.Vds = self.SampSet.param('Vds')
 
         self.ChsConfig = self.param('ChsConfig')
         self.RowChannels = self.ChsConfig.param('Channels')
@@ -197,7 +196,6 @@ class SampSetParam(pTypes.GroupParameter):
         self.Fs.sigValueChanged.connect(self.on_Fs_Changed)
         self.SampsCo.sigValueChanged.connect(self.on_Fs_Changed)
         self.nBlocks.sigValueChanged.connect(self.on_Fs_Changed)
-        self.Vds.sigValueChanged.connect(self.on_Col_Changed)
 
 #        self.ChsConfig.sigTreeStateChanged.connect(self.GetConfig)
 
@@ -217,7 +215,6 @@ class SampSetParam(pTypes.GroupParameter):
         IntTime = (1/(FsxCh)*self.nBlocks.value())
         self.SampSet.param('FsxCh').setValue(FsxCh)
         self.SampSet.param('Inttime').setValue(IntTime)
-#        self.SampSet.param('Vds').setValue(self.Vds)
 
     def on_Row_Changed(self):
         self.Rows = []
@@ -265,6 +262,7 @@ class SampSetParam(pTypes.GroupParameter):
                 for Col in self.Columns:
                     ChannelNames[Row + Col + 'AC'] = Ind
                     Ind += 1
+
 
         return ChannelNames
 
