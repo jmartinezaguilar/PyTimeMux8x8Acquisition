@@ -229,7 +229,7 @@ class ChannelsConfig():
         if self.DigitalOutputs is not None:
             self.DigitalOutputs.ClearTask()
             self.DigitalOutputs = None
-        
+
 
 #    def __del__(self):
 #        print('Delete class')
