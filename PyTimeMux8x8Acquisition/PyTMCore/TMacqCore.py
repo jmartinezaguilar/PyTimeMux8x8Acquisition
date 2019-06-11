@@ -87,11 +87,21 @@ class ChannelsConfig():
         self.AnalogInputs.DoneEvent = self.DoneEventCallBack
 
     def _InitDigitalOutputs(self):
+        print('InitDigitalOutputs')
+        print(self.DigColumns)
         DOChannels = []
 
-        for digc in self.DigColumns:
+        for digc in sorted(doColumns):
+            print(digc)
             DOChannels.append(doColumns[digc][0])
             DOChannels.append(doColumns[digc][1])
+        print(DOChannels)
+
+#        DOChannels = []
+#
+#        for digc in self.DigColumns:
+#            DOChannels.append(doColumns[digc][0])
+#            DOChannels.append(doColumns[digc][1])
 
         self.DigitalOutputs = DaqInt.WriteDigital(Channels=DOChannels)
 
