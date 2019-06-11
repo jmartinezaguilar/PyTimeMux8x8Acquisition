@@ -9,12 +9,6 @@ Created on Wed Mar  6 12:29:47 2019
 
 from __future__ import print_function
 from PyQt5 import Qt
-from qtpy.QtWidgets import (QHeaderView, QCheckBox, QSpinBox, QLineEdit,
-                            QDoubleSpinBox, QTextEdit, QComboBox,
-                            QTableWidget, QAction, QMessageBox, QFileDialog,
-                            QInputDialog)
-
-from qtpy import QtWidgets, uic
 import numpy as np
 import time
 import os
@@ -218,23 +212,8 @@ class MainWindow(Qt.QWidget):
         print('Sample time', Ts, np.mean(self.Tss))
 
 
-def main():
-    import argparse
-    import pkg_resources
-
-    # Add version option
-    __version__ = pkg_resources.require("PyCont")[0].version
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--version', action='version',
-                        version='%(prog)s {version}'.format(
-                            version=__version__))
-    parser.parse_args()
-
-    app = QtWidgets.QApplication(sys.argv)
-    w = MainWindow()
-    w.show()
-    sys.exit(app.exec_())
-
-
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    app = Qt.QApplication([])
+    mw = MainWindow()
+    mw.show()
+    app.exec_()
