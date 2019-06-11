@@ -11,6 +11,7 @@ import pyqtgraph.parametertree.parameterTypes as pTypes
 import numpy as np
 import TMacqCore as CoreMod
 import PyCont.FileModule as FileMod
+#import FileModule as FileMod
 
 
 SampSettingConf = ({'title': 'Channels Config',
@@ -24,16 +25,6 @@ SampSettingConf = ({'title': 'Channels Config',
                                   'name': 'AcqAC',
                                   'type': 'bool',
                                   'value': True},
-                                 {'title': 'Gain DC',
-                                  'name': 'DCGain',
-                                  'type': 'float',
-                                  'value': 10e3,
-                                  'siPrefix': True, },
-                                 {'title': 'Gain AC',
-                                  'name': 'ACGain',
-                                  'type': 'float',
-                                  'value': 1e5,
-                                  'siPrefix': True, },
                                  {'tittle': 'Row Channels',
                                   'name': 'Channels',
                                   'type': 'group',
@@ -175,7 +166,7 @@ class SampSetParam(pTypes.GroupParameter):
     Columns = []
     Rows = []
     Acq = {}
-
+    
     def __init__(self, **kwargs):
         super(SampSetParam, self).__init__(**kwargs)
         self.addChildren(SampSettingConf)
@@ -194,7 +185,7 @@ class SampSetParam(pTypes.GroupParameter):
         # Init Settings
         self.on_Acq_Changed()
         self.on_Row_Changed()
-        self.on_Col_Changed()
+        self.on_Col_Changed()        
         self.on_Fs_Changed()
 
         print(self.children())
@@ -221,9 +212,12 @@ class SampSetParam(pTypes.GroupParameter):
     def on_Fs_Changed(self):
         Ts = 1/self.Fs.value()
         FsxCh = 1/(Ts*self.SampsCo.value()*len(self.Columns))
+#        if self.Acq['AcqDC'] and self.Acq['AcqAC'] is True:
+#            FsxCh = FsxCh * 0.5
         IntTime = (1/(FsxCh)*self.nBlocks.value())
         self.SampSet.param('FsxCh').setValue(FsxCh)
         self.SampSet.param('Inttime').setValue(IntTime)
+#        self.SampSet.param('Vds').setValue(self.Vds)
 
     def on_Row_Changed(self):
         self.Rows = []
@@ -311,6 +305,7 @@ class DataAcquisitionThread(Qt.QThread):
         loop.exec_()
 
     def CalcAverage(self, MuxData):
+#        Avg = np.mean(LinesSorted[:,-2:,:], axis=1)
         return np.mean(MuxData[:, self.AvgIndex:, :], axis=1)
 
     def NewData(self, aiData, MuxData):
