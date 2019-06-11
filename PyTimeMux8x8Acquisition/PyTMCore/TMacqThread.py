@@ -10,8 +10,7 @@ from PyQt5 import Qt
 import pyqtgraph.parametertree.parameterTypes as pTypes
 import numpy as np
 import TMacqCore as CoreMod
-import PyCont.FileModule as FileMod
-#import FileModule as FileMod
+import FileModule as FileMod
 
 
 SampSettingConf = ({'title': 'Channels Config',
