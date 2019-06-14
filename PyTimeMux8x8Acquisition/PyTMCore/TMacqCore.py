@@ -169,10 +169,12 @@ class ChannelsConfig():
         print('SetDigitalOutputs')
         DOut = np.array([], dtype=np.bool)
 
-        for nCol in range(len(self.DigColumns)):
+        for nCol, iCol in zip(range(len(doColumns)), sorted(doColumns.keys())):
             Lout = np.zeros((1, nSampsCo*len(self.DigColumns)), dtype=np.bool)
-            Lout[0, nSampsCo * nCol: nSampsCo * (nCol + 1)] = True
-            Cout = np.vstack((Lout, ~Lout))
+            for i, n in enumerate(self.DigColumns):
+                if n == iCol:
+                    Lout[0, nSampsCo * i: nSampsCo * (i + 1)] = True
+                Cout = np.vstack((Lout, ~Lout))
             DOut = np.vstack((DOut, Cout)) if DOut.size else Cout
 
         SortDInds = []
