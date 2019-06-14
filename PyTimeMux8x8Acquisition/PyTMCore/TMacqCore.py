@@ -58,6 +58,9 @@ class ChannelsConfig():
     DataEveryNEvent = None
     DataDoneEvent = None
 
+    ClearSig = np.zeros((1, len(doColumns)), dtype=np.bool).astype(np.uint8)
+    ClearSig = np.hstack((ClearSig, ClearSig))
+
     def _InitAnalogInputs(self):
         print('InitAnalogInputs')
         self.DCChannelIndex = {}
@@ -145,7 +148,7 @@ class ChannelsConfig():
         print('StartAcquisition')
         self.SetBias(Vgs=Vgs, Vds=Vds)
         self.SetDigitalOutputs(nSampsCo=nSampsCo)
-
+        print('DSig set')
         self.nBlocks = nBlocks
         self.nSampsCo = nSampsCo
 #        self.OutputShape = (nColumns * nRows, nSampsCh, nblocs)
@@ -176,13 +179,15 @@ class ChannelsConfig():
 
         SortDInds = []
         for line in DOut[0:-1:2, :]:
-            SortDInds.append(np.where(line))
+            if True in line:
+                SortDInds.append(np.where(line))
 
         self.SortDInds = SortDInds
         self.DigitalOutputs.SetContSignal(Signal=DOut.astype(np.uint8))
 
     def _SortChannels(self, data, SortDict):
         print('SortChannels')
+        print(data.shape)
         # Sort by aianalog input
         (samps, inch) = data.shape
         aiData = np.zeros((samps, len(SortDict)))
@@ -193,6 +198,7 @@ class ChannelsConfig():
         aiData = aiData.transpose()
         MuxData = np.ndarray(self.OutputShape)
 
+        print('columns')
         nColumns = len(self.DigColumns)
         for indB in range(self.nBlocks):
             startind = indB * self.nSampsCo * nColumns
@@ -239,6 +245,8 @@ class ChannelsConfig():
         self.SetBias(Vgs=0, Vds=0)
         self.AnalogInputs.StopContData()
         if self.DigitalOutputs is not None:
+            print('Clear Digital')
+#            self.DigitalOutputs.SetContSignal(Signal=self.ClearSig)
             self.DigitalOutputs.ClearTask()
             self.DigitalOutputs = None
 
