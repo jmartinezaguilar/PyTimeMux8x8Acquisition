@@ -122,7 +122,7 @@ class ChannelsConfig():
         self._InitAnalogOutputs(ChVds=ChVds, ChVs=ChVs)
 
         self.ChNamesList = sorted(Channels)
-        print self.ChNamesList
+        print(self.ChNamesList)
         self.AcqAC = AcqAC
         self.AcqDC = AcqDC
         self.ACGain = ACGain
