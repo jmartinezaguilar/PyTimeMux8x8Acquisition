@@ -169,7 +169,7 @@ class ChannelsConfig():
         print('SetDigitalOutputs')
         DOut = np.array([], dtype=np.bool)
 
-        for nCol, iCol in zip(range(len(doColumns)), sorted(doColumns.keys())):
+        for nCol, iCol in zip(range(len(doColumns)), sorted(list(doColumns.keys()))):
             Lout = np.zeros((1, nSampsCo*len(self.DigColumns)), dtype=np.bool)
             for i, n in enumerate(self.DigColumns):
                 if n == iCol:
@@ -191,7 +191,7 @@ class ChannelsConfig():
         # Sort by aianalog input
         (samps, inch) = data.shape
         aiData = np.zeros((samps, len(SortDict)))
-        for chn, inds in sorted(SortDict.iteritems()):
+        for chn, inds in sorted(SortDict.items()):
             aiData[:, inds[1]] = data[:, inds[0]]
 
         # Sort by digital columns
