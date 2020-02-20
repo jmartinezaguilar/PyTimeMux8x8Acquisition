@@ -5,7 +5,8 @@ Created on Tue Mar  5 14:13:45 2019
 
 @author: aguimera
 """
-import PyCont.DaqInterface as DaqInt
+# import PyCont.DaqInterface as DaqInt
+import PyqtTools.DaqInterface as DaqInt
 #import PyTMCore.DaqInterface as DaqInt
 import numpy as np
 
@@ -57,6 +58,8 @@ class ChannelsConfig():
     # Events list
     DataEveryNEvent = None
     DataDoneEvent = None
+    VgOut = None
+    VsigOut = None
 
     ClearSig = np.zeros((1, len(doColumns)), dtype=np.bool).astype(np.uint8)
     ClearSig = np.hstack((ClearSig, ClearSig))
@@ -108,18 +111,27 @@ class ChannelsConfig():
 
         self.DigitalOutputs = DaqInt.WriteDigital(Channels=DOChannels)
 
-    def _InitAnalogOutputs(self, ChVds, ChVs):
+    def _InitAnalogOutputs(self, ChVds, ChVs, ChVg, ChVsig):
         print('ChVds ->', ChVds)
         print('ChVs ->', ChVs)
+        print('ChVg ->', ChVg)
+        print('ChVsig ->', ChVsig)
+
         self.VsOut = DaqInt.WriteAnalog((ChVs,))
         self.VdsOut = DaqInt.WriteAnalog((ChVds,))
+        if ChVg:
+            self.VgOut = DaqInt.WriteAnalog((ChVg,))
+        if ChVsig:
+            self.VsigOut = DaqInt.WriteAnalog((ChVsig,))
 
     def __init__(self, Channels, DigColumns,
                  AcqDC=True, AcqAC=True,
                  ChVds='ao0', ChVs='ao1',
+                 ChVg=None, ChVsig=None,
                  ACGain=1.1e5, DCGain=10e3):
         print('InitChannels')
-        self._InitAnalogOutputs(ChVds=ChVds, ChVs=ChVs)
+        self._InitAnalogOutputs(ChVds=ChVds, ChVs=ChVs, 
+                                ChVg=ChVg, ChVsig=ChVsig)
 
         self.ChNamesList = sorted(Channels)
         print(self.ChNamesList)
@@ -144,9 +156,11 @@ class ChannelsConfig():
         else:
             self.nChannels = len(self.MuxChannelNames)
 
-    def StartAcquisition(self, Fs, nSampsCo, nBlocks, Vgs, Vds, **kwargs):
+    def StartAcquisition(self, Fs, nSampsCo, nBlocks, 
+                         Vgs, Vds, Vg, Vsig, **kwargs):
         print('StartAcquisition')
         self.SetBias(Vgs=Vgs, Vds=Vds)
+        self.SetBiasSignal(Vg=Vg, Vsig=Vsig)
         self.SetDigitalOutputs(nSampsCo=nSampsCo)
         print('DSig set')
         self.nBlocks = nBlocks
@@ -164,6 +178,12 @@ class ChannelsConfig():
         self.BiasVd = Vds-Vgs
         self.Vgs = Vgs
         self.Vds = Vds
+
+    def SetBiasSignal(self, Vg, Vsig):
+        if self.VgOut:
+            self.VgOut.SetVal(Vg)
+        if self.VsigOut:
+            self.VsigOut.SetVal(Vsig)
 
     def SetDigitalOutputs(self, nSampsCo):
         print('SetDigitalOutputs')
@@ -243,6 +263,7 @@ class ChannelsConfig():
     def Stop(self):
         print('Stopppp')
         self.SetBias(Vgs=0, Vds=0)
+        self.SetBiasSignal(Vg=0, Vsig=0)   
         self.AnalogInputs.StopContData()
         if self.DigitalOutputs is not None:
             print('Clear Digital')

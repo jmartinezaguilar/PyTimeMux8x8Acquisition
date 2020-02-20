@@ -10,7 +10,9 @@ from PyQt5 import Qt
 import pyqtgraph.parametertree.parameterTypes as pTypes
 import numpy as np
 import PyTMCore.TMacqCore as CoreMod
-import PyCont.FileModule as FileMod
+# import PyCont.FileModule as FileMod
+import PyqtTools.FileModule as FileMod
+
 
 
 SampSettingConf = ({'title': 'Channels Config',
@@ -24,6 +26,34 @@ SampSettingConf = ({'title': 'Channels Config',
                                   'name': 'AcqAC',
                                   'type': 'bool',
                                   'value': True},
+                                 {'title': 'AO2 Config',
+                                  'name': 'AO2',
+                                  'type': 'group',
+                                  'children': ({'title': 'Enable',
+                                                'name': 'Ao2_en',
+                                                'type': 'bool', 
+                                                'value': False},
+                                               {'title': 'ao2',
+                                                'name': 'ao2',
+                                                'type': 'float',
+                                                'value': 0,
+                                                'step': 1,
+                                                'suffix': ' V',
+                                                'limits': (-5, 5)})},
+                                 {'title': 'AO3 Config',
+                                  'name': 'AO3',
+                                  'type': 'group',
+                                  'children': ({'title': 'Enable',
+                                                'name': 'Ao3_en',
+                                                'type': 'bool', 
+                                                'value': False},
+                                               {'title': 'ao3',
+                                                'name': 'ao3',
+                                                'type': 'float',
+                                                'value': 0,
+                                                'step': 1,
+                                                'suffix': ' V',
+                                                'limits': (-5, 5)})},
                                  {'title': 'Gain DC',
                                   'name': 'DCGain',
                                   'type': 'float',
@@ -190,6 +220,8 @@ class SampSetParam(pTypes.GroupParameter):
         self.ChsConfig = self.param('ChsConfig')
         self.RowChannels = self.ChsConfig.param('Channels')
         self.ColChannels = self.ChsConfig.param('DigColumns')
+        self.AnalogOutput2 = self.ChsConfig.param('AO2')
+        self.AnalogOutput3 = self.ChsConfig.param('AO3')
 
         # Init Settings
         self.on_Acq_Changed()
@@ -197,7 +229,6 @@ class SampSetParam(pTypes.GroupParameter):
         self.on_Col_Changed()
         self.on_Fs_Changed()
 
-        print(self.children())
         # Signals
         self.RowChannels.sigTreeStateChanged.connect(self.on_Row_Changed)
         self.ColChannels.sigTreeStateChanged.connect(self.on_Col_Changed)
@@ -283,14 +314,25 @@ class SampSetParam(pTypes.GroupParameter):
     def GetChannelsConfigKwargs(self):
         ChanKwargs = {}
         for p in self.ChsConfig.children():
-            if p.name() is 'Channels':
+            if p.name() == 'Channels':
                 ChanKwargs[p.name()] = self.Rows
-            elif p.name() is 'DigColumns':
+            elif p.name() == 'DigColumns':
                 ChanKwargs[p.name()] = self.Columns
+            elif p.name() == 'AO2' or 'AO3':
+                continue
             else:
                 ChanKwargs[p.name()] = p.value()
 
         return ChanKwargs
+
+    def GetAnalogOutputs(self):
+        AnalogOut = {}
+        for p in self.AnalogOutput2.children():
+            AnalogOut[p.name()] = p.value()
+        for p in self.AnalogOutput3.children():
+            AnalogOut[p.name()] = p.value()
+        return AnalogOut
+
 
 ###############################################################################
 

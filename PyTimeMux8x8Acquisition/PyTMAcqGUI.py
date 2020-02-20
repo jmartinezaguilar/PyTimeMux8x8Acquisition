@@ -21,8 +21,10 @@ import os
 import sys
 from pyqtgraph.parametertree import Parameter, ParameterTree
 
-import PyCont.FileModule as FileMod
-import PyCont.PlotModule as PltMod
+# import PyCont.FileModule as FileMod
+# import PyCont.PlotModule as PltMod
+import PyqtTools.FileModule as FileMod
+import PyqtTools.PlotModule as PltMod
 
 #import PyTMCore.FileModule as FileMod
 #import PyTMCore.PlotModule as PltMod
@@ -155,6 +157,20 @@ class MainWindow(Qt.QWidget):
             GenKwargs = self.SamplingPar.GetSampKwargs()
             GenChanKwargs = self.SamplingPar.GetChannelsConfigKwargs()
             AvgIndex = self.SamplingPar.SampSet.param('nAvg').value()
+            print(GenChanKwargs)
+            AnalogOutputsKwargs = self.SamplingPar.GetAnalogOutputs()
+            if AnalogOutputsKwargs['Ao2_en'] is True:
+                GenChanKwargs['ChVg'] = 'ao2'
+                GenKwargs['Vg'] = AnalogOutputsKwargs['ao2']
+            else:
+                GenKwargs['Vg'] = None
+
+            if AnalogOutputsKwargs['Ao3_en'] is True:
+                GenChanKwargs['ChVsig'] = 'ao3'
+                GenKwargs['Vsig'] = AnalogOutputsKwargs['ao3']
+            else:
+                GenKwargs['Vsig'] = None
+
             self.threadAcq = AcqMod.DataAcquisitionThread(ChannelsConfigKW=GenChanKwargs,
                                                           SampKw=GenKwargs,
                                                           AvgIndex=AvgIndex)
