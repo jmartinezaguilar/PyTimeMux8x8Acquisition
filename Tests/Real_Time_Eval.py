@@ -28,6 +28,13 @@ def GenDigitalLines(nColumns):
 
     return DOut.astype(np.uint8), SortDInds
 
+def GenTruthTable(n):
+    if n < 1:
+        return[[]]
+    subtable = GenTruthTable(n-1)
+    return [row+[v] for row in subtable for v in [0,1]]
+
+
 
 def GenDummySamples(nColumns, nRows, nSampsCh):
     DummySamps = np.array([])
