@@ -5,8 +5,8 @@ Created on Tue Mar  5 14:13:45 2019
 
 @author: aguimera
 """
-import PyCont.DaqInterface as DaqInt
-#import PyTMCore.DaqInterface as DaqInt
+
+import PyTMCore.DaqInterface as DaqInt
 import numpy as np
 
 
@@ -249,7 +249,7 @@ class ChannelsConfig():
 #            self.DigitalOutputs.SetContSignal(Signal=self.ClearSig)
             self.DigitalOutputs.ClearTask()
             self.DigitalOutputs = None
-
+        
 
 #    def __del__(self):
 #        print('Delete class')

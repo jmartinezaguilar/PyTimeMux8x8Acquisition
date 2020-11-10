@@ -7,12 +7,16 @@ Created on Wed Oct 17 12:00:18 2018
 import sys
 import ctypes
 
+import PyGFET.DataStructures as PyData
 import PhyREC.NeoInterface as NeoRecord
 import PhyREC.PlotWaves as Rplt
+#from PyGFET.RecordPlot import PltSlot, PlotRecord
 
 import PyDAQmx as Daq
 from ctypes import byref, c_int32
 import numpy as np
+from scipy import signal
+import neo
 import quantities as pq
 import os
 
@@ -24,6 +28,9 @@ from qtpy.QtWidgets import (QHeaderView, QCheckBox, QSpinBox, QLineEdit,
 from qtpy import QtWidgets, uic
 
 import matplotlib.pyplot as plt
+import deepdish as dd
+import matplotlib.cm as cmx
+import matplotlib.colors as mpcolors
 import pickle
 
 
@@ -94,8 +101,7 @@ class ReadAnalog(Daq.Task):
         self.ContSamps = True  # TODO check it
 
         samperr = self.CfgSampClkTiming("", Fs, Daq.DAQmx_Val_Rising,
-                                        Daq.DAQmx_Val_ContSamps,
-                                        self.EverySamps)
+                                        Daq.DAQmx_Val_ContSamps, self.EverySamps)
 
         self.CfgInputBuffer(self.EverySamps*10)
         self.AutoRegisterEveryNSamplesEvent(Daq.DAQmx_Val_Acquired_Into_Buffer,
@@ -103,7 +109,7 @@ class ReadAnalog(Daq.Task):
 
         print (samperr, EverySamps, Fs)
         self.StartTask()
-        print ('Errordebug', 'start')
+        print ('Errordebug', 'start' )
 
     def StopContData(self):
         self.StopTask()
@@ -205,7 +211,7 @@ class WriteDigital(Daq.Task):
 
         return Dev
 
-    def SetDigitalSignal(self, Signal, nSamps, nLines):
+    def SetSignal(self, Signal, nSamps, nLines):
         read = c_int32()
         self.CfgSampClkTiming('ai/SampleClock', 1, Daq.DAQmx_Val_Rising,
                               Daq.DAQmx_Val_ContSamps, Signal.shape[1])
@@ -312,18 +318,20 @@ class ChannelsConfig():
         print 'ai list ->', InChans
         for ch in sorted(Channels):
             if Configuration == 'DC':
-                print(ch, ' DC -> ',
-                      self.aiChannels[ch][0], self.DCChannelIndex[ch])
+                print ch, ' DC -> ', self.aiChannels[ch][0], self.DCChannelIndex[ch]
                 self.ACChannelIndex = self.DCChannelIndex
             elif Configuration == 'AC':
-                print(ch, ' AC -> ',
-                      self.aiChannels[ch][1], self.ACChannelIndex[ch])
+                print ch, ' AC -> ', self.aiChannels[ch][1], self.ACChannelIndex[ch]
                 self.DCChannelIndex = self.ACChannelIndex
             else:
-                print(ch, ' DC -> ',
-                      self.aiChannels[ch][0], self.DCChannelIndex[ch])
-                print(ch, ' AC -> ',
-                      self.aiChannels[ch][1], self.ACChannelIndex[ch])
+                print ch, ' DC -> ', self.aiChannels[ch][0], self.DCChannelIndex[ch]
+                print ch, ' AC -> ', self.aiChannels[ch][1], self.ACChannelIndex[ch]
+
+#        self.ChOrder = {}
+#        for irow, row in enumerate(self.aiChannels):
+#            for icol, col in enumerate(self.doColumns):
+#                self.ChOrder[row+col] = (irow, icol)
+#        print self.ChOrder
 
         self.Inputs = ReadAnalog(InChans=InChans)
         # events linking
@@ -459,7 +467,6 @@ class DataProcess(ChannelsConfig):
     IVGainGate = None
     DO = None
 
-    # Debugging file
     debugFileDc = False
     debugFileAc = False
     DebugCounterAc = 0
@@ -468,6 +475,7 @@ class DataProcess(ChannelsConfig):
     ChOrder = None
 
     def InitRecording(self, Vds, Vgs, Fs, RecDC=False, RecAC=False):
+
         self.ChOrder = {}
         for irow, row in enumerate(self.ChNamesList):
             for icol, col in enumerate(sorted(self.DigColumns)):
@@ -497,7 +505,6 @@ class DataProcess(ChannelsConfig):
                 self.Seg.AddSignal(sig)
 
     def CalcACData(self, Data):
-        # Debug File AC
         if self.debugFileAc:
             if self.DebugCounterAc >= 20:
                 for si, sn in sorted(enumerate(self.ChannelNames)):
@@ -505,7 +512,7 @@ class DataProcess(ChannelsConfig):
 
                 if len(self.debugDataAC[sn]) >= 1000:
                     print 'AC dbg File'
-                    pickle.dump(self.debugDataAC, open('DebugDataAC.pkl',
+                    pickle.dump(self.debugDataAC, open('DebugDataAC.pkl', 
                                                        'wb'))
                     self.debugFileAc = False
                     self.DebugCounterAc = 0
@@ -522,8 +529,7 @@ class DataProcess(ChannelsConfig):
 
             for si, sn in sorted(enumerate(self.ChannelNames)):
                 self.Seg.AppendSignal(sn + '_AC',
-                                      self.BufferAC.RefreshBuffer[:,
-                                                                  si][:, None])
+                                      self.BufferAC.RefreshBuffer[:, si][:, None])
             self.BufferAC.BufferInd = 0
             self.BufferAC.RefreshBuffer = np.zeros((self.BufferAC.ReBufferSize,
                                                     len(self.DigColumns) *
@@ -531,12 +537,10 @@ class DataProcess(ChannelsConfig):
 
             if self.debugFileAc:
                 self.DebugCounterAc += 1
-
             if self.EventDataACReady is not None:
                 self.EventDataACReady()
 
     def CalcDCData(self, Data):
-        # Debug File DC
         if self.debugFileDc:
             if self.DebugCounterDc >= 20:
                 for si, sn in sorted(enumerate(self.ChannelNames)):
@@ -561,8 +565,7 @@ class DataProcess(ChannelsConfig):
 
             for si, sn in sorted(enumerate(self.ChannelNames)):
                 self.Seg.AppendSignal(sn + '_DC',
-                                      self.BufferDC.RefreshBuffer[:,
-                                                                  si][:, None])
+                                      self.BufferDC.RefreshBuffer[:, si][:, None])
             self.BufferDC.BufferInd = 0
             self.BufferDC.RefreshBuffer = np.zeros((self.BufferDC.ReBufferSize,
                                                     len(self.DigColumns) *
@@ -581,8 +584,8 @@ class DataProcess(ChannelsConfig):
         self.GateDataDoneEvent = None
         self.GateDataEveryNEvent = None
 
-    def StartAcquisition(self, Vds, Vgs, Fs, nSampsCo,
-                         RecDC, RecAC, ReBufferSize):
+    def StartAcquisition(self, Vds, Vgs, Fs, nSampsCo, RecDC, RecAC,
+                         ReBufferSize):
 
         self.ClearEventsCallBacks()
 
@@ -600,7 +603,6 @@ class DataProcess(ChannelsConfig):
 
         SwitchFreq = Fs/(len(self.DigColumns)*nSampsCo)
         print 'Switching Freq -->', SwitchFreq
-
         self.InitRecording(Vds=Vds,
                            Vgs=Vgs,
                            Fs=SwitchFreq,
@@ -616,18 +618,28 @@ class DataProcess(ChannelsConfig):
         self.DO = self.GenerateDigitalSignal(nSampsCo=nSampsCo)
         print 'nLines', len(self.DigColumns * 2)
 
-        self.ColumnsControl.SetDigitalSignal(Signal=self.DO,
-                                             nSamps=nSampsCo,
-                                             nLines=len(self.DigColumns) * 2)
+        self.ColumnsControl.SetSignal(Signal=self.DO,
+                                      nSamps=nSampsCo,
+                                      nLines=len(self.DigColumns) * 2)
+
+#    def RecalculateFs(self):
+#        while self.Fs % (len(self.DigColumns)*self.nSampsCo) != 0:
+#            self.Fs = self.Fs - 1
 
     def InitDebugFile(self):
         DebugData = {}
         for si, sn in sorted(enumerate(self.ChannelNames)):
             DebugData[sn] = []
+        
         return DebugData
 
     def LauchAq(self):
         EveryN = len(self.DigColumns)*self.nSampsCo
+        print self.DO.shape
+        print self.DO
+
+#        while self.Fs % EveryN != 0:
+#            EveryN = EveryN + 1
 
         self.ReadChannelsData(Fs=self.Fs,
                               EverySamps=EveryN)
@@ -666,11 +678,13 @@ class TimeMuxAPP(QtWidgets.QMainWindow):
     PltSlDC = None
     PlotTimeIds = None
     EventContGateDone = None
+    refreshiters = 0
 
     def __init__(self, parent=None):
 
         QtWidgets.QMainWindow.__init__(self)
-        uipath = os.path.join(os.path.dirname(__file__), 'TimeMuxGui.ui')
+        uipath = os.path.join(os.path.dirname(__file__),
+                              'TimeMuxGui.ui')
         print uipath
         uic.loadUi(uipath, self)
         self.setWindowTitle('Time Multiplexing')
@@ -695,6 +709,7 @@ class TimeMuxAPP(QtWidgets.QMainWindow):
             ck.setChecked(False)
         for cj in self.GrColumns.findChildren(QtWidgets.QCheckBox):
             cj.setChecked(False)
+
 
     def ButInitChannelsClick(self):
         print 'But InitChannels'
@@ -739,7 +754,7 @@ class TimeMuxAPP(QtWidgets.QMainWindow):
         for ck in ChGroup.findChildren(QtWidgets.QCheckBox):
             if ck.isChecked():
                 Chs.append(str(ck.text()))
-        return Chs
+        return Chs  # Dictat amb els canals ['Ch08', 'Ch16', ...
 
     def GetSelectedDigitals(self, DigGroup):
         Dig = []
@@ -787,8 +802,7 @@ class TimeMuxAPP(QtWidgets.QMainWindow):
                                           nSampsCo=self.SpnSamps.value(),
                                           RecDC=self.ChckDCSetup.isChecked(),
                                           RecAC=self.ChckACSetup.isChecked(),
-                                          ReBufferSize=self.SpnBuffSize.value()
-                                          )
+                                          ReBufferSize=self.SpnBuffSize.value())
 
             if self.ChckDCSetup.isChecked():
                 self.InitDCFigure(Axs=self.ChckDCAxs.isChecked())
@@ -805,6 +819,7 @@ class TimeMuxAPP(QtWidgets.QMainWindow):
         figdc, axdc = plt.subplots(len(self.TimeMux.DigColumns),
                                    len(self.TimeMux.ChNamesList), sharex=True)
         Slots = []
+
         for sig in self.TimeMux.Seg.Signals():
             if not sig.name.endswith('DC'):
                 continue
@@ -827,6 +842,7 @@ class TimeMuxAPP(QtWidgets.QMainWindow):
         figac, axac = plt.subplots(len(self.TimeMux.DigColumns),
                                    len(self.TimeMux.ChNamesList), sharex=True)
         Slots = []
+
         for sig in self.TimeMux.Seg.Signals():
             if not sig.name.endswith('AC'):
                 continue
@@ -907,7 +923,7 @@ def main():
     import pkg_resources
 
     # Add version option
-    __version__ = pkg_resources.require("TimeMux")[0].version
+    __version__ = pkg_resources.require("PyGFET")[0].version
     parser = argparse.ArgumentParser()
     parser.add_argument('--version', action='version',
                         version='%(prog)s {version}'.format(
